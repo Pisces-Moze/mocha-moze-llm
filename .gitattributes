@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.bin binary
+*.tar.gz binary
+*.patch -whitespace
+licenses/* -whitespace

@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+"""Mocha ARMv7 / GK20A local language model launcher."""
+import argparse
+import codecs
+import os
+import signal
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / 'src'))
+from tokenizer import Tokenizer
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--model', choices=['qwen', 'stories'], default='qwen')
+    parser.add_argument('--backend', choices=['cuda', 'cpu'], default='cpu')
+    parser.add_argument('-i', '--prompt', default=None)
+    parser.add_argument('-n', '--tokens', type=int, default=96, help='Qwen: maximum new tokens; Stories: total steps including prompt')
+    parser.add_argument('-t', '--temperature', type=float, default=0.7)
+    parser.add_argument('--repeat-penalty', type=float, default=1.12)
+    parser.add_argument('--top-k', type=int, default=40)
+    parser.add_argument('--top-p', type=float, default=0.9)
+    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--threads', type=int, choices=[1, 2, 3, 4], default=3)
+    parser.add_argument('--check', action='store_true', help='compare every CUDA logit to CPU; slower')
+    args = parser.parse_args()
+    if not 1 <= args.tokens <= 384:
+        parser.error('-n must be between 1 and 384')
+    if args.temperature < 0 or not __import__('math').isfinite(args.temperature):
+        parser.error('temperature must be finite and nonnegative')
+    if not __import__('math').isfinite(args.repeat_penalty) or args.repeat_penalty < 1:
+        parser.error('repeat penalty must be finite and at least 1')
+    if not 1 <= args.top_k <= 151643 or not 0 < args.top_p <= 1:
+        parser.error('top-k must be 1..151643; top-p must be (0,1]')
+    if args.model == 'qwen' and Path('/proc/meminfo').exists():
+        available = next(int(line.split()[1]) for line in Path('/proc/meminfo').read_text().splitlines()
+                         if line.startswith('MemAvailable:'))
+        required = 1100 * 1024 if args.check and args.backend == 'cuda' else 600 * 1024
+        if available < required:
+            parser.error(f'Qwen needs at least {required//1024} MiB available; found {available//1024} MiB. Close unused applications first.')
+    env = dict(os.environ, OMP_NUM_THREADS=str(args.threads), OMP_WAIT_POLICY='PASSIVE',
+               MOCHA_LLM_BACKEND=args.backend)
+    if args.model == 'qwen':
+        env.setdefault('MOCHA_LLM_CUDA_THREADS', '1024')
+    if args.check:
+        env['MOCHA_LLM_CHECK'] = '1'
+    else:
+        env.pop('MOCHA_LLM_CHECK', None)
+    # Runtime remains private to this application; never change global Mesa paths.
+    runtime = Path(os.environ.get('MOCHA_CUDA_RUNTIME', '/srv/mocha-data/codex-debian-desktop/cuda-runtime-current'))
+    if (ROOT / 'runtime/lib').is_dir():
+        runtime = ROOT / 'runtime'
+    env['LD_LIBRARY_PATH'] = str(runtime / 'lib') + (':' + env['LD_LIBRARY_PATH'] if env.get('LD_LIBRARY_PATH') else '')
+    prompt = args.prompt or ('Once upon a time' if args.model == 'stories' else '你好，请简单介绍一下自己。')
+    if args.model == 'stories':
+        # Preserve the pinned legacy engine's total-step semantics.
+        command = [str(ROOT / 'bin/mocha-stories-engine'), str(ROOT / 'models/stories260k.bin'),
+                   '-z', str(ROOT / 'models/stories-tokenizer.bin'), '-i', prompt,
+                   '-n', str(args.tokens), '-t', str(args.temperature), '-s', str(args.seed)]
+        print('TinyStories: -n counts total steps including prompt in this legacy engine.', file=sys.stderr)
+        return subprocess.call(command, env=env)
+    tokenizer = Tokenizer(ROOT / f'models/{args.model}-tokenizer.json')
+    ids = tokenizer.prompt(prompt)
+    context = 256 if args.model == 'qwen' else 512
+    if len(ids) + args.tokens > context:
+        parser.error(f'prompt={len(ids)} + new={args.tokens} exceeds the {context}-token context')
+    decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
+    with tempfile.NamedTemporaryFile(mode='w', encoding='ascii', prefix='mocha-llm-') as tokens:
+        tokens.write(' '.join(map(str, ids)))
+        tokens.flush()
+        command = [str(ROOT / f'bin/mocha-{args.model}-engine'), str(ROOT / f'models/{args.model}-q8.bin'), tokens.name,
+                   str(args.tokens), args.backend, str(args.temperature), str(args.seed or 42), str(int(args.check)),
+                   str(args.repeat_penalty), str(args.top_k), str(args.top_p)]
+        process = subprocess.Popen(command, env=env, stdout=subprocess.PIPE, text=True)
+        try:
+            for line in process.stdout:
+                token = int(line.strip())
+                if not (0 <= token < 151643 if args.model == 'qwen' else 3 <= token < 6400):
+                    raise ValueError(f'invalid output token {token}')
+                sys.stdout.write(decoder.decode(tokenizer.decode_bytes(token)))
+                sys.stdout.flush()
+            sys.stdout.write(decoder.decode(b'', final=True) + '\n')
+            return process.wait()
+        except (KeyboardInterrupt, BrokenPipeError):
+            process.send_signal(signal.SIGTERM)
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+            return 130
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

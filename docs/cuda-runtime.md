@@ -1,0 +1,11 @@
+# 大模型需要的 Gdev Runtime 修复
+
+Gdev Nouveau 路径历史上将 generic shared/local 窗口设为 `0x0e000000` 和 `0x0f000000`。小型 CUDA 程序通常没有分配到这些地址；Qwen 的约 501 MiB 连续权重缓冲会覆盖该区间，generic 读指令因此可能读到 shared/local 空间。仅从 CPU 映射读回权重不能证明 GPU 读到相同内容。
+
+实机诊断中，前几层结果接近 CPU，之后部分权重读为零，第一步 logit 对照失败。独立 GPU 页抽样也能检测到错误。这不是 Qwen 量化误差，也不应通过增大对照容差绕过。
+
+`runtime-source/apply-runtime-port.py` 在 GK20A 上将窗口改为 `0xe0000000` / `0xf0000000`，远离本机实际分配的大缓冲。其他芯片保留原配置。这是针对 Mocha 2 GiB / ARMv7 的后端修正，不是通用的 64 位虚拟地址分配器；更大地址空间或其他 GPU 需要重新设计和验证。
+
+修复后的诊断对 525,128,192 字节权重每页抽取一项，共 128,205 个样本，没有不一致；真实 Qwen 进一步通过 6,229,376 个 CPU／GPU logits 对照。独立 512 MiB 回归覆盖 131,072 个页样本：旧 Runtime 有 4096 个错误，新 Runtime 为零。源码位于 `tests/large-buffer.cu`，构建和运行见 [构建教程](build.md)。
+
+发行包把开放 Runtime 放在自己的 `runtime/lib` 中，通过进程环境加载。它保留既有 ARMhf Driver ABI、ELF32 cubin 解析、NVCC 参数布局、真实内存填充、事件与函数属性修复。未实现的功能应返回错误；本工具不提供 cuBLAS、PyTorch CUDA 或完整 NVIDIA CUDA 兼容承诺。

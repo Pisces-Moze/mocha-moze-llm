@@ -1,0 +1,139 @@
+{
+  "date": "2026-10-26",
+  "board": "Xiaomi Mi Pad Mocha / Tegra K1 / GK20A / ARMhf / 2 GiB RAM",
+  "kernel": "6.12.111-moze.1-native-vde2",
+  "method": "Ordinary mocha user, desktop retained, clocks/voltage not changed by this tool. Single bounded run per configuration.",
+  "files": {
+    "qwen_engine": {
+      "bytes": 74344,
+      "sha256": "62fe8898932356134321b706df8a3d85d8ba0f80ab7dcba34778bd09e0239f7f"
+    },
+    "stories_engine": {
+      "bytes": 74944,
+      "sha256": "7cab93706b708dacac8dd237c57af1ed0a76b1a78281ee959f074df1eeba68c1"
+    },
+    "open_runtime": {
+      "bytes": 2099624,
+      "sha256": "500cb9eae55f972afd22043a7af81936c5c1dec8dd7958fe1cbefe330b2e797c"
+    },
+    "qwen_weights": {
+      "bytes": 525128192,
+      "sha256": "1fe918ebefd210efb60f684ba77ab32b6f244fdf008473de8c6759b987873792"
+    },
+    "large_buffer_probe": {
+      "bytes": 71260,
+      "sha256": "89ab08d7ca48f5b50b8b8348c1b3645498ef8daceec379e2efc8c3c659224013"
+    }
+  },
+  "runs": [
+    {
+      "name": "qwen-check",
+      "model": "qwen",
+      "backend": "cuda",
+      "check": true,
+      "new_tokens_limit": 8,
+      "threads": 3,
+      "cuda_threads": 512,
+      "returncode": 0,
+      "wall_seconds": 90.40728904999992,
+      "child_cpu_seconds": 105.759274,
+      "text": "Linux是一种开源的操作系统，以其开放\n",
+      "metrics": "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456\nBACKEND=cuda PROMPT_TOKENS=34 GENERATED=8 STARTUP_S=8.020 PREFILL_S=65.627 DECODE_TPS=0.515 WALL_S=87.242 CHECKED=6229376 MAX_ABS_ERROR=0.0003349781\nRSS_KIB=524928 PEAK_RSS_KIB=524928\nCUDA_KERNEL_CALLS=41",
+      "mem_available_kib_before": 1311936
+    },
+    {
+      "name": "qwen-cpu-3",
+      "model": "qwen",
+      "backend": "cpu",
+      "check": false,
+      "new_tokens_limit": 48,
+      "threads": 3,
+      "cuda_threads": 512,
+      "returncode": 0,
+      "wall_seconds": 23.20328570399988,
+      "child_cpu_seconds": 59.991066000000004,
+      "text": "Linux是一种开源的操作系统，以其开放性、灵活性和安全性著称，广泛应用于服务器、工作站、嵌入式设备以及企业环境。\n",
+      "metrics": "BACKEND=cpu PROMPT_TOKENS=34 GENERATED=30 STARTUP_S=0.000 PREFILL_S=9.791 DECODE_TPS=2.518 WALL_S=21.310 CHECKED=0 MAX_ABS_ERROR=0\nRSS_KIB=523852 PEAK_RSS_KIB=523852",
+      "mem_available_kib_before": 1308460
+    },
+    {
+      "name": "qwen-cuda-512",
+      "model": "qwen",
+      "backend": "cuda",
+      "check": false,
+      "new_tokens_limit": 16,
+      "threads": 3,
+      "cuda_threads": 512,
+      "returncode": 0,
+      "wall_seconds": 79.41402868800014,
+      "child_cpu_seconds": 69.54987800000002,
+      "text": "Linux是一种开源的操作系统，以其开放性、灵活性和安全性著称，\n",
+      "metrics": "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456\nBACKEND=cuda PROMPT_TOKENS=34 GENERATED=16 STARTUP_S=7.851 PREFILL_S=45.189 DECODE_TPS=0.639 WALL_S=76.506 CHECKED=0 MAX_ABS_ERROR=0\nRSS_KIB=11368 PEAK_RSS_KIB=522952\nCUDA_KERNEL_CALLS=49",
+      "mem_available_kib_before": 1309584
+    },
+    {
+      "name": "qwen-cuda-1024",
+      "model": "qwen",
+      "backend": "cuda",
+      "check": false,
+      "new_tokens_limit": 16,
+      "threads": 3,
+      "cuda_threads": 1024,
+      "returncode": 0,
+      "wall_seconds": 77.14833345700004,
+      "child_cpu_seconds": 69.99616899999998,
+      "text": "Linux是一种开源的操作系统，以其开放性、灵活性和安全性著称，\n",
+      "metrics": "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456\nBACKEND=cuda PROMPT_TOKENS=34 GENERATED=16 STARTUP_S=7.839 PREFILL_S=43.863 DECODE_TPS=0.669 WALL_S=74.133 CHECKED=0 MAX_ABS_ERROR=0\nRSS_KIB=11368 PEAK_RSS_KIB=523080\nCUDA_KERNEL_CALLS=49",
+      "mem_available_kib_before": 1323452
+    },
+    {
+      "name": "qwen-cpu-4",
+      "model": "qwen",
+      "backend": "cpu",
+      "check": false,
+      "new_tokens_limit": 32,
+      "threads": 4,
+      "cuda_threads": 512,
+      "returncode": 0,
+      "wall_seconds": 19.11194800599992,
+      "child_cpu_seconds": 60.39526899999993,
+      "text": "Linux是一种开源的操作系统，以其开放性、灵活性和安全性著称，广泛应用于服务器、工作站、嵌入式设备以及企业环境。\n",
+      "metrics": "BACKEND=cpu PROMPT_TOKENS=34 GENERATED=30 STARTUP_S=0.000 PREFILL_S=7.817 DECODE_TPS=3.086 WALL_S=17.213 CHECKED=0 MAX_ABS_ERROR=0\nRSS_KIB=523860 PEAK_RSS_KIB=523860",
+      "mem_available_kib_before": 1316944
+    },
+    {
+      "name": "stories-check",
+      "model": "stories",
+      "backend": "cuda",
+      "check": true,
+      "new_tokens_limit": 96,
+      "threads": 3,
+      "cuda_threads": 512,
+      "returncode": 0,
+      "wall_seconds": 13.189108646000022,
+      "child_cpu_seconds": 9.498141000000004,
+      "text": "Once upon a time, there was a little girl named Lily. She loved to play outside in the park. One day, she saw a big, red ball. She wanted to play with it, but it was too high.\nLily's mom said, \"Lily, let's go to the park.\" Lily was sad and didn't\n",
+      "metrics": "LLM_BACKEND=cuda OFFLOAD=transformer-forward DEVICE=NVIDIA GK20A (Tegra K1) CC=3.2 GPU_WEIGHT_BYTES=1056540 GPU_CACHE_BYTES=655360 CHECK=1\nachieved tok/s: 12.379463\nLLM_PROCESS_RSS_KIB=5552 PEAK_RSS_KIB=5552\nLLM_CUDA_KERNEL_CALLS=96 CHECKED_LOGITS=49152 ERRORS=0 MAX_ABS_ERROR=5.10215759e-05",
+      "mem_available_kib_before": 1315340
+    }
+  ],
+  "large_buffer_regression": [
+    {
+      "runtime": "previous",
+      "returncode": 1,
+      "wall_seconds": 98.19763894900007,
+      "stdout": "GPU_GENERIC_BUFFER_BYTES=536870912 PAGE_SAMPLES=131072 ERRORS=4096\n"
+    },
+    {
+      "runtime": "fixed",
+      "returncode": 0,
+      "wall_seconds": 98.24066858799983,
+      "stdout": "GPU_GENERIC_BUFFER_BYTES=536870912 PAGE_SAMPLES=131072 ERRORS=0\n"
+    }
+  ],
+  "text_comparison": {
+    "cpu_3_vs_4_equal": true,
+    "cuda_512_vs_1024_equal": true,
+    "cuda_text_matches_cpu_prefix": true
+  }
+}

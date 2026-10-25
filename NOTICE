@@ -1,0 +1,26 @@
+Mocha LLM
+Original integration and MiniMind CPU/CUDA inference code: Pisces-Moze and contributors, 2026.
+
+Qwen2.5-0.5B-Instruct weights, tokenizer and model architecture:
+Qwen / Alibaba Cloud, Apache-2.0; see licenses/Qwen-Apache-2.0.txt.
+Q8 conversion and standalone inference implementation are modifications by this project.
+
+MiniMind2-Small development reference tokenizer and model architecture:
+jingyaogong / MiniMind, Apache-2.0; see licenses/MiniMind-Apache-2.0.txt.
+Q8 conversion and standalone inference implementation are modifications by this project.
+The model's pinned README declares Apache-2.0 in its License section.
+
+TinyStories 260K weights and tokenizer: karpathy/tinyllamas (MIT).
+TinyStories host engine: Andrej Karpathy / llama2.c (MIT), modified to add CUDA forward,
+optional CPU comparisons and diagnostics. See licenses/llama2.c-MIT.txt.
+
+Application-local runtime: Shinpei Kato and other Gdev contributors (MIT), with Mocha patches.
+Includes the upstream Ocelot/Hydrazine code and author notices from Gdev's pinned source.
+See licenses/Gdev-MIT.txt and runtime-source/sources.json.
+Private libdrm / libdrm_nouveau and Boost.Thread retain their distribution copyright
+and license notices under licenses/. System glibc, libstdc++, libgcc and libgomp
+are dependencies and are not bundled.
+
+NVIDIA's CUDA toolkit, compiler, headers and proprietary runtime are NOT shipped.
+The application contains its own CUDA kernels compiled to native sm_32 code.
+This is an experimental open runtime port, not NVIDIA's complete CUDA distribution.
