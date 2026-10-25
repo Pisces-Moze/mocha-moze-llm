@@ -78,7 +78,7 @@ python3 tools/package.py \
 
 打包器只复制明确列出的开放库、程序和模型，生成每个文件的 SHA256 清单，以及压缩包校验文件。权重随 Release 分发；Git 只保存实现、分词器、来源、许可证和实测记录。
 
-当前打包器默认版本为 `0.2.0`。增加 `--reuse-models` 可生成不含三份大模型输入的更新包；清单仍包含这些文件的预期大小与哈希，接收端必须运行 `tools/reuse-models.py --from OLD_RELEASE` 后再校验。构建和测试所用的 Runtime 前缀需同时包含新 `libgdev.so.1.0.0` 与新 `libucuda.so.1.0.0`，只替换后者无法得到 coherent 缓冲优化。
+当前打包器默认版本为 `0.2.1`。增加 `--reuse-models` 可生成不含三份大模型输入的更新包；清单仍包含这些文件的预期大小与哈希，接收端必须运行 `tools/reuse-models.py --from OLD_RELEASE` 后再校验。构建和测试所用的 Runtime 前缀需同时包含新 `libgdev.so.1.0.0` 与新 `libucuda.so.1.0.0`，只替换后者无法得到 coherent 缓冲优化。
 
 常规测试：`python3 -m unittest discover -s tests -v`。真实 CUDA 计算、数值与性能结果需要在 GK20A 上重新取得；CI 不声称验证 GPU。
 

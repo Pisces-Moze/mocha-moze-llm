@@ -56,7 +56,7 @@ python3 tools/verify-install.py .
 
 ## 5. 建议参数
 
-v0.2.0 日常默认 CUDA，当前实测快于 CPU 和混合后端。需要释放 GPU 给桌面时可以选择三线程 CPU。`hybrid` 由 CPU 处理 Transformer、GPU 处理大部分词表，CPU 另一个工作线程同时处理剩余词表；当前约 3.61 token/s，低于纯 CUDA。混合模式建议至少有 850 MiB 可用内存。
+v0.2.1 日常默认 CUDA，当前实测快于 CPU 和混合后端。需要释放 GPU 给桌面时可以选择三线程 CPU。`hybrid` 由 CPU 处理 Transformer、GPU 处理大部分词表，CPU 另一个工作线程同时处理剩余词表；当前约 3.61 token/s，低于纯 CUDA。混合模式建议至少有 850 MiB 可用内存。
 
 如需比较 CUDA 的线程块，可在单次命令前设置：
 
@@ -72,16 +72,16 @@ Qwen 默认 1024，也支持 512；实测 1024 稍快。此参数不会修改 GP
 
 如果按 README 解压到 `~/Applications/mocha-llm`，删除自己解压出的 `mocha-llm-v0.1.0` 文件夹即可卸载该版本。若手动建立过命令软链接，再删除对应软链接。已有系统 CUDA 实验目录和旧模型不受影响。
 
-## 升级到 v0.2.0
+## 升级到 v0.2.1
 
 先保留 v0.1.0 完整目录。在它的父目录执行：
 
 ```sh
-curl -fLO https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.2.0/mocha-llm-v0.2.0-armhf-update.tar.gz
-curl -fLo SHA256SUMS-v0.2.0 https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.2.0/SHA256SUMS
-sha256sum -c SHA256SUMS-v0.2.0
-tar -xzf mocha-llm-v0.2.0-armhf-update.tar.gz
-cd mocha-llm-v0.2.0
+curl -fLO https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.2.1/mocha-llm-v0.2.1-armhf-update.tar.gz
+curl -fLo SHA256SUMS-v0.2.1 https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.2.1/SHA256SUMS
+sha256sum -c SHA256SUMS-v0.2.1
+tar -xzf mocha-llm-v0.2.1-armhf-update.tar.gz
+cd mocha-llm-v0.2.1
 python3 tools/reuse-models.py --from ../mocha-llm-v0.1.0
 ./mocha-llm -i '请用一句话介绍Linux。' -n 64
 ```
@@ -91,3 +91,15 @@ python3 tools/reuse-models.py --from ../mocha-llm-v0.1.0
 更新使用 GK20A 的 coherent 缓冲映射；本机 `6.12.111-moze.1-native-vde2` 已验证。其他移植系统需自行确认 Nouveau 对 ARM coherent/WC 映射的支持，不能仅依据 GPU 型号判断兼容性。
 
 诊断时可用 `MOCHA_LLM_FULL_LOGITS=1` 禁用候选压缩回传；`MOCHA_LLM_VERIFY_CANDIDATES=1` 会逐步对照完整词表的 Top-k，适用于 `cuda` 且 `top-k <= 64`。`--check` 总是读取全部 logits 并与 CPU 比较。正常推理的 Top-k 大于 64 时自动使用完整回传，采样参数保持原义。
+
+## 输出长度与上下文
+
+v0.2.1 的 Qwen 总上下文为 1024 token，包含提示词、ChatML 模板和输出。`-n 256` 可以正常使用，例如：
+
+```sh
+./mocha-llm -i '用中文介绍Linux。' -n 256
+```
+
+模型可能提前输出结束标记；这不是报错，也不保证恰好输出 256 个汉字。若提示词很长，程序会显示剩余输出预算，应缩短提示词或按提示降低 `-n`。TinyStories 的 512 步总长度含义保持原样。
+
+Qwen 的 GPU KV 缓冲从 6 MiB 增到 24 MiB；纯 CUDA 不再额外预分配 CPU KV，CPU／hybrid／数值对照才分配主机 KV。模型权重与分词器没有变化。长上下文的注意力计算会更慢，已有的短提示词速度不代表满 1024 token 时的速度。

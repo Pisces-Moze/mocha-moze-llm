@@ -21,16 +21,16 @@ tar -xzf mocha-llm-v0.1.0-armhf.tar.gz
 cd mocha-llm-v0.1.0
 python3 tools/verify-install.py .
 cd ..
-curl -fLO https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.2.0/mocha-llm-v0.2.0-armhf-update.tar.gz
-curl -fLo SHA256SUMS-v0.2.0 https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.2.0/SHA256SUMS
-sha256sum -c SHA256SUMS-v0.2.0
-tar -xzf mocha-llm-v0.2.0-armhf-update.tar.gz
-cd mocha-llm-v0.2.0
+curl -fLO https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.2.1/mocha-llm-v0.2.1-armhf-update.tar.gz
+curl -fLo SHA256SUMS-v0.2.1 https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.2.1/SHA256SUMS
+sha256sum -c SHA256SUMS-v0.2.1
+tar -xzf mocha-llm-v0.2.1-armhf-update.tar.gz
+cd mocha-llm-v0.2.1
 python3 tools/reuse-models.py --from ../mocha-llm-v0.1.0
 ./mocha-llm --model qwen -i '请用一句话介绍Linux。' -n 64
 ```
 
-回答逐步输出到终端，运行统计写入标准错误。v0.2.0 默认使用 CUDA。优化后的中文 CUDA 实测约 7.75 token/s，初始化约 3.2 秒、34-token 提示词预填充约 2.6 秒；v0.1.0 的 CUDA 约 0.67 token/s。CPU 与 GPU 使用相同 Q8 权重。CPU 四线程此前约 3.09 token/s，本轮连续测试末尾约 2.40 token/s，结果受温度、调频和桌面负载影响。
+回答逐步输出到终端，运行统计写入标准错误。v0.2.1 默认使用 CUDA。优化后的中文 CUDA 实测约 7.75 token/s，初始化约 3.2 秒、34-token 提示词预填充约 2.6 秒；v0.1.0 的 CUDA 约 0.67 token/s。CPU 与 GPU 使用相同 Q8 权重。CPU 四线程此前约 3.09 token/s，本轮连续测试末尾约 2.40 token/s，结果受温度、调频和桌面负载影响。
 
 ```sh
 # 中文对话：有完整指令模板，默认使用 Qwen
@@ -39,31 +39,33 @@ python3 tools/reuse-models.py --from ../mocha-llm-v0.1.0
 # 更高 CPU 吞吐，运行时可能影响桌面响应
 ./mocha-llm --backend cpu --threads 4 -i '用一句话介绍Linux。' -n 48 -t 0
 
-# 实际 CUDA 前向计算；v0.2.0 默认后端
+# 实际 CUDA 前向计算；v0.2.1 默认后端
 ./mocha-llm --backend cuda -i '用一句话介绍Linux。' -n 16 -t 0
 
 # 英文微型模型：用于 CUDA 连通性和数值测试
 ./mocha-llm --model stories --backend cuda -i 'Once upon a time' -n 96 -t 0
 ```
 
-## 升级到 v0.2.0
+## 升级到 v0.2.1
 
-新安装先按上面的命令取得 v0.1.0 的模型包，再安装 [v0.2.0 小型更新包](https://github.com/Pisces-Moze/mocha-moze-llm/releases/tag/v0.2.0)。模型权重不变，更新无需重复下载约 501 MiB 的 Qwen 文件。完整升级命令见 [部署教程](docs/deployment.md#升级到-v020)。
+新安装先按上面的命令取得 v0.1.0 的模型包，再安装 [v0.2.1 小型更新包](https://github.com/Pisces-Moze/mocha-moze-llm/releases/tag/v0.2.1)。模型权重不变，更新无需重复下载约 501 MiB 的 Qwen 文件。完整升级命令见 [部署教程](docs/deployment.md#升级到-v021)。
 
 CPU＋GPU 协同模式可运行 `./mocha-llm --backend hybrid --threads 4 --gpu-head-percent 90 -i "你好" -n 32`。实测约 3.61 token/s，当前比纯 CUDA 慢，保留用于调整分工；不作为默认。
+
+v0.2.1 将 Qwen 总上下文从 256 扩到 1024 token，修复 `-n 256` 被提示词和模板挤占预算的问题。超限时会明确显示当前提示词下允许的最大 `-n`。`-n` 是新生成 token 的上限，遇到结束标记仍会提前停止。
 
 ## 两个模型
 
 | 模型 | 用途 | 权重 | 本工具上下文 |
 | --- | --- | --- | --- |
-| Qwen2.5-0.5B-Instruct | 中文问答、简单指令 | 分组 Q8，约 501 MiB | 256 token |
+| Qwen2.5-0.5B-Instruct | 中文问答、简单指令 | 分组 Q8，约 501 MiB | 1024 token |
 | TinyStories 260K | 英文故事续写、CUDA 最小示例 | FP32，约 1 MiB | 512 token |
 
 TinyStories 没有指令训练，把问题接成故事属于模型自身限制。Qwen 能跟随中文指令，但仍可能产生错误，不具备联网检索能力。
 
-Qwen 的 256-token 上限是这个移植版本的内存和延迟取舍，不是原模型的上限。当前只提供单次问答；每条命令重新建立模型和 KV cache，不自动保留历史。
+Qwen 的 1024-token 上限是这个移植版本的内存和延迟取舍，不是原模型的上限。当前只提供单次问答；每条命令重新建立模型和 KV cache，不自动保留历史。
 
-v0.2.0 的 CUDA 初始化与上述提示词预填充合计约 5.8 秒；等待期间没有文本输出属于预期。具体耗时随提示词长度和系统负载变化。
+v0.2.1 的 CUDA 初始化与上述提示词预填充合计约 5.8 秒；等待期间没有文本输出属于预期。具体耗时随提示词长度和系统负载变化。
 
 ## 参数
 
@@ -81,7 +83,7 @@ v0.2.0 的 CUDA 初始化与上述提示词预填充合计约 5.8 秒；等待�
 | `--threads` | `3` | CPU／CPU 对照的线程数，范围 1–4 |
 | `--check` | 关闭 | 每一步 CUDA logits 与独立 CPU 路径比较，额外耗时和内存 |
 
-`token` 不等于汉字个数。Qwen 的提示词、模板和输出合计必须不超过 256 token。Stories 保留原引擎的 `-n` 含义，其重复惩罚和 Top-k／Top-p 参数不生效。
+`token` 不等于汉字个数。Qwen 的提示词、模板和输出合计必须不超过 1024 token。Stories 保留原引擎的 `-n` 含义，其重复惩罚和 Top-k／Top-p 参数不生效。
 
 ## 兼容性与性能
 

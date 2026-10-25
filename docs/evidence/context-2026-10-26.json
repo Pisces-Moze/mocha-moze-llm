@@ -1,0 +1,48 @@
+{
+  "context_tokens": 1024,
+  "tested_engine_sha256": "94b0d67210b49fab8b308f857153983d95adfed66470f5aedcdd47962a91c4bd",
+  "runs": [
+    {
+      "name": "context-1024-check",
+      "returncode": 0,
+      "prompt_tokens": 2,
+      "requested_new_tokens": 4,
+      "wall_seconds": 8.187699681000595,
+      "output_tokens": "198\n2\n19709\n369\n",
+      "metrics": [
+        "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=25165824",
+        "BACKEND=cuda PROMPT_TOKENS=2 GENERATED=4 STARTUP_S=4.407 PREFILL_S=1.537 DECODE_TPS=1.711 WALL_S=7.698 CHECKED=759680 MAX_ABS_ERROR=0.00013065338",
+        "RSS_KIB=543368 PEAK_RSS_KIB=543368",
+        "CUDA_FORWARD_STEPS=5 CUDA_KERNEL_CALLS=10"
+      ]
+    },
+    {
+      "name": "requested-n256",
+      "returncode": 0,
+      "prompt_tokens": 34,
+      "requested_new_tokens": 256,
+      "wall_seconds": 10.034718804000477,
+      "output_tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n33071\n5373\n118280\n33108\n106875\n99610\n24641\n3837\n100789\n110645\n89047\n5373\n114896\n5373\n103767\n17254\n28330\n101044\n101034\n99304\n99719\n1773\n",
+      "metrics": [
+        "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=25165824",
+        "BACKEND=cuda PROMPT_TOKENS=34 GENERATED=30 STARTUP_S=3.141 PREFILL_S=2.565 DECODE_TPS=7.524 WALL_S=9.561 CHECKED=0 MAX_ABS_ERROR=0",
+        "RSS_KIB=29804 PEAK_RSS_KIB=541372",
+        "CUDA_FORWARD_STEPS=64 CUDA_KERNEL_CALLS=126"
+      ]
+    },
+    {
+      "name": "prompt-over256",
+      "returncode": 0,
+      "prompt_tokens": 317,
+      "requested_new_tokens": 2,
+      "wall_seconds": 27.724731727999824,
+      "output_tokens": "52801\n",
+      "metrics": [
+        "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=25165824",
+        "BACKEND=cuda PROMPT_TOKENS=317 GENERATED=1 STARTUP_S=3.405 PREFILL_S=23.774 DECODE_TPS=0.000 WALL_S=27.315 CHECKED=0 MAX_ABS_ERROR=0",
+        "RSS_KIB=29804 PEAK_RSS_KIB=541396",
+        "CUDA_FORWARD_STEPS=318 CUDA_KERNEL_CALLS=322"
+      ]
+    }
+  ]
+}

@@ -19,7 +19,7 @@
 #endif
 static const unsigned char *base;
 static const Header *header;
-static std::vector<float> keys(LAYERS*CONTEXT*KV),values(keys.size());
+static std::vector<float> keys,values;
 static float val(Tensor t,int i) {return ((const signed char *)(base+t.data))[i]*((const float *)(base+t.scales))[i/64];}
 static void mat(Tensor t,const float *x,float *y,bool add=false,unsigned first=0) {
     const signed char *w=(const signed char *)(base+t.data);const float *sc=(const float *)(base+t.scales);
@@ -49,6 +49,8 @@ static void rms(Tensor t,const float *x,float *y) {
     for(int i=0;i<DIM;i++)y[i]=x[i]*s*((const float *)(base+t.data))[i];
 }
 static void cpu(float *out,int token,int pos,bool project=true,bool hidden_only=false) {
+    // Pure CUDA owns its own KV cache; allocate host KV only for CPU/check/hybrid.
+    if(keys.empty()){keys.resize(LAYERS*CONTEXT*KV);values.resize(keys.size());}
     float x[DIM],n[DIM],q[DIM],k[KV],v[KV],a[CONTEXT],gate[HID],up[HID];
     for(int i=0;i<DIM;i++)x[i]=val(header->t[0],token*DIM+i);
     for(int l=0;l<LAYERS;l++) {

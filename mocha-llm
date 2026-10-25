@@ -33,8 +33,9 @@ def main():
     args = parser.parse_args()
     if args.model == 'stories' and args.backend == 'hybrid':
         parser.error('hybrid is supported by the Qwen engine only')
-    if not 1 <= args.tokens <= 384:
-        parser.error('-n must be between 1 and 384')
+    context = 1024 if args.model == 'qwen' else 512
+    if not 1 <= args.tokens <= context:
+        parser.error(f'-n must be between 1 and {context}; Qwen must also leave space for the prompt and chat template')
     if args.temperature < 0 or not __import__('math').isfinite(args.temperature):
         parser.error('temperature must be finite and nonnegative')
     if not __import__('math').isfinite(args.repeat_penalty) or args.repeat_penalty < 1:
@@ -70,9 +71,11 @@ def main():
         return subprocess.call(command, env=env)
     tokenizer = Tokenizer(ROOT / f'models/{args.model}-tokenizer.json')
     ids = tokenizer.prompt(prompt)
-    context = 256 if args.model == 'qwen' else 512
     if len(ids) + args.tokens > context:
-        parser.error(f'prompt={len(ids)} + new={args.tokens} exceeds the {context}-token context')
+        remaining=max(0,context-len(ids))
+        parser.error(f'-n {args.tokens} exceeds the available output budget: prompt and chat template use '
+                     f'{len(ids)} of {context} tokens; maximum -n for this prompt is {remaining}. '
+                     f'Shorten the prompt or use -n {remaining}.')
     decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
     with tempfile.NamedTemporaryFile(mode='w', encoding='ascii', prefix='mocha-llm-') as tokens:
         tokens.write(' '.join(map(str, ids)))

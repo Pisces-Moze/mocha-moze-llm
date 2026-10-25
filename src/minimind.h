@@ -4,7 +4,7 @@
 #include <stdint.h>
 struct Tensor { uint32_t data, scales, rows, cols; };
 #ifdef MOCHA_QWEN
-enum { DIM=896, HID=4864, KV=128, HEAD=64, VOCAB=151936, CONTEXT=256, LAYERS=24,
+enum { DIM=896, HID=4864, KV=128, HEAD=64, VOCAB=151936, CONTEXT=1024, LAYERS=24,
        STRIDE=12, TENSORS=290, BOS=151644, EOS=151645, HEADER_BYTES=8192 };
 #define RMS_EPS 1e-6f
 #else

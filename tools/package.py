@@ -23,7 +23,7 @@ def main():
     p.add_argument('--stories-inputs', required=True, type=Path)
     p.add_argument('--runtime-prefix', required=True, type=Path)
     p.add_argument('--output', required=True, type=Path, help='new build directory')
-    p.add_argument('--version', default='0.2.0', choices=['0.1.0','0.2.0'])
+    p.add_argument('--version', default='0.2.1', choices=['0.1.0','0.2.0','0.2.1'])
     p.add_argument('--reuse-models', action='store_true', help='update archive; reuse verified weights from v0.1.0')
     a = p.parse_args()
     repo = Path(__file__).resolve().parents[1]
