@@ -9,6 +9,49 @@ def write(path, text):
         path.write_text(text)
 
 def apply(root):
+    # GK20A has no CPU/GPU I/O coherency. Cached, permanently mapped BOs
+    # force whole-buffer ARM cache maintenance on every pushbuf submission.
+    # Request the kernel's coherent (uncached/WC) mapping instead; CPU/GPU
+    # ownership and fence waits remain intact. Other chipsets keep their policy.
+    p = root/'lib/user/nouveau/nouveau_gdev.c'
+    s = p.read_text()
+    marker = '\tif (nouveau_bo_new(dev, flags, 0, size, NULL, &bo))'
+    if 'MOCHA_COHERENT_COMPUTE_BUFFERS' not in s:
+        assert marker in s
+        s = s.replace(marker, '''    /* MOCHA_COHERENT_COMPUTE_BUFFERS */
+    if (dev->chipset == 0xea) flags |= NOUVEAU_BO_COHERENT;
+'''+marker, 1)
+    write(p, s)
+    # Attribute discovery repeatedly created and destroyed full GPU channels.
+    # Reuse only the verified, immutable chipset identity on this integrated
+    # GPU. Live SM-count queries still open/query/close their own handle.
+    p = root/'cuda/driver/device.c'
+    s = p.read_text()
+    if 'MOCHA_STATIC_ATTRIBUTE_CHIPSET' not in s:
+        begin = s.index('CUresult cuDeviceGetAttribute(')
+        end = s.find('\nCUresult ', begin+1)
+        if end < 0: end = len(s)
+        body = s[begin:end]
+        body = body.replace('Ghandle handle;', 'Ghandle handle = NULL;\n    static __thread uint64_t mocha_chipset;\n    static __thread int mocha_device = -1;', 1)
+        start = body.index('\thandle = __gopen((int)dev);')
+        stop = body.index('    /* Integrated GK20A', start)
+        body = body[:start]+'''    /* MOCHA_STATIC_ATTRIBUTE_CHIPSET */
+    if (mocha_chipset == 0xea && mocha_device == (int)dev &&
+        attrib != CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT) {
+        chipset = mocha_chipset;
+    } else {
+        handle = __gopen((int)dev);
+        if (!handle) return CUDA_ERROR_INVALID_CONTEXT;
+        if (gquery(handle, GDEV_QUERY_CHIPSET, &chipset)) {
+            __gclose(handle); return CUDA_ERROR_UNKNOWN;
+        }
+        if (chipset == 0xea) { mocha_chipset = chipset; mocha_device = (int)dev; }
+    }
+'''+body[stop:]
+        body = body.replace('__gclose(handle);', 'if (handle) __gclose(handle);')
+        s = s[:begin]+body+s[end:]
+    s = s.replace('if (handle) __gclose(handle);', 'if (handle) { __gclose(handle); }')
+    write(p, s)
     p = root/'cuda/CMakeLists.txt'
     s = p.read_text()
     if 'ADD_DEFINITIONS(-DENABLE_CUBIN_MODULE)' not in s:

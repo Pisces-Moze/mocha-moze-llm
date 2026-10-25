@@ -23,9 +23,11 @@ def main():
     p.add_argument('--stories-inputs', required=True, type=Path)
     p.add_argument('--runtime-prefix', required=True, type=Path)
     p.add_argument('--output', required=True, type=Path, help='new build directory')
+    p.add_argument('--version', default='0.2.0', choices=['0.1.0','0.2.0'])
+    p.add_argument('--reuse-models', action='store_true', help='update archive; reuse verified weights from v0.1.0')
     a = p.parse_args()
     repo = Path(__file__).resolve().parents[1]
-    root = a.output / 'mocha-llm-v0.1.0'
+    root = a.output / ('mocha-llm-v'+a.version)
     root.mkdir(parents=True, exist_ok=False)
     for name in ['src', 'tools', 'models', 'licenses', 'docs', 'tests', 'runtime-source', 'ci']:
         shutil.copytree(repo / name, root / name, ignore=shutil.ignore_patterns('__pycache__'))
@@ -43,17 +45,19 @@ def main():
             raise ValueError('Not an ELF32 ARM executable: ' + str(source))
         shutil.copyfile(source, root / 'bin' / name)
         (root / 'bin' / name).chmod(0o755)
-    shutil.copyfile(a.qwen_weights, root / 'models/qwen-q8.bin')
-    shutil.copyfile(a.stories_inputs / 'model.bin', root / 'models/stories260k.bin')
-    shutil.copyfile(a.stories_inputs / 'tokenizer.bin', root / 'models/stories-tokenizer.bin')
+    reusable={'models/qwen-q8.bin':a.qwen_weights,
+              'models/stories260k.bin':a.stories_inputs/'model.bin',
+              'models/stories-tokenizer.bin':a.stories_inputs/'tokenizer.bin'}
+    if not a.reuse_models:
+        for name, source in reusable.items():shutil.copyfile(source,root/name)
     locks = json.loads((repo / 'models/qwen-inputs.json').read_text())
-    if digest(root / 'models/qwen-q8.bin') != locks['quantized_sha256']:
+    if digest(a.qwen_weights) != locks['quantized_sha256']:
         raise ValueError('Qwen weight hash mismatch')
     if digest(root / 'models/qwen-tokenizer.json') != locks['tokenizer_sha256']:
         raise ValueError('Qwen tokenizer hash mismatch')
     stories = json.loads((repo / 'models/stories-inputs.json').read_text())['inputs']
     for name, source in [('stories260k.bin', 'model.bin'), ('stories-tokenizer.bin', 'tokenizer.bin')]:
-        if digest(root / 'models' / name) != stories[source]['sha256']:
+        if digest(a.stories_inputs/source) != stories[source]['sha256']:
             raise ValueError('Stories input mismatch')
     # Only the open runtime and five explicitly enumerated dependency libraries.
     lib = root / 'runtime/lib'
@@ -69,15 +73,18 @@ def main():
     (root / 'mocha-llm').chmod(0o755)
     files = {str(f.relative_to(root)).replace('\\', '/'): {'bytes': f.stat().st_size, 'sha256': digest(f)}
              for f in sorted(root.rglob('*')) if f.is_file()}
+    if a.reuse_models:
+        for name, source in reusable.items():files[name]={'bytes':source.stat().st_size,'sha256':digest(source)}
     try:
         source_commit=subprocess.check_output(['git','-C',str(repo),'rev-parse','HEAD'],text=True).strip()
     except (OSError,subprocess.CalledProcessError):
         source_commit=None
-    manifest = {'version': '0.1.0', 'architecture': 'arm-linux-gnueabihf', 'gpu': 'GK20A sm_32',
+    manifest = {'version': a.version, 'architecture': 'arm-linux-gnueabihf', 'gpu': 'GK20A sm_32',
                 'source_repository':'https://github.com/Pisces-Moze/mocha-moze-llm',
                 'source_commit':source_commit,'files': files}
+    if a.reuse_models:manifest['reuse_from']='0.1.0';manifest['reused_files']=list(reusable)
     (root / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
-    archive = a.output / 'mocha-llm-v0.1.0-armhf.tar.gz'
+    archive = a.output / ('mocha-llm-v'+a.version+'-armhf'+('-update' if a.reuse_models else '')+'.tar.gz')
     with tarfile.open(archive, 'w:gz') as tar:
         tar.add(root, arcname=root.name, filter=lambda i: normalize(i))
     (a.output / 'SHA256SUMS').write_text(digest(archive) + '  ' + archive.name + '\n')

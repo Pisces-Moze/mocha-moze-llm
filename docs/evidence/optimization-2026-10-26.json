@@ -1,0 +1,342 @@
+{
+  "date": "2026-10-26",
+  "platform": "Mocha ARMhf / GK20A / 6.12.111-moze.1-native-vde2",
+  "conditions": "Desktop active; ordinary mocha user; no changes to CPU/GPU frequency or voltage; short sequential measurements, not thermally normalized.",
+  "qwen_weights_sha256": "1fe918ebefd210efb60f684ba77ab32b6f244fdf008473de8c6759b987873792",
+  "files": {
+    "mocha-qwen-release-engine": "b21e2fefd1306bf3eabff1984f0c455ec571b72f8fa21cc176fa4bc3eec59af3",
+    "libgdev.so.1.0.0": "6b89eca884564c8b33db3a94f7ebe7ae9b08645f76c287f9daedb8a72179a1eb",
+    "libucuda.so.1.0.0": "a6dc5138f6c17d793a5a06ae565f7fa4d1cef67fc70432efc9b23fb94d5c8d39"
+  },
+  "experiments": {
+    "opt-packed": [
+      {
+        "name": "packed-check",
+        "returncode": 0,
+        "wall_seconds": 17.769284113999674,
+        "tokens": "198\n2\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=2 GENERATED=2 STARTUP_S=7.732 PREFILL_S=5.602 DECODE_TPS=0.374 WALL_S=16.005 CHECKED=455808 MAX_ABS_ERROR=3.5047531e-05",
+          "RSS_KIB=524940 PEAK_RSS_KIB=524940",
+          "CUDA_KERNEL_CALLS=3"
+        ]
+      },
+      {
+        "name": "packed-cuda",
+        "returncode": 0,
+        "wall_seconds": 70.87169509299974,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=34 GENERATED=8 STARTUP_S=8.234 PREFILL_S=44.289 DECODE_TPS=0.421 WALL_S=69.145 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=11372 PEAK_RSS_KIB=522992",
+          "CUDA_KERNEL_CALLS=41"
+        ]
+      },
+      {
+        "name": "baseline-cpu",
+        "returncode": 0,
+        "wall_seconds": 10.420042830000057,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n",
+        "metrics": [
+          "BACKEND=cpu PROMPT_TOKENS=34 GENERATED=8 STARTUP_S=0.000 PREFILL_S=7.943 DECODE_TPS=3.085 WALL_S=10.212 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=523864 PEAK_RSS_KIB=523864"
+        ]
+      }
+    ],
+    "opt-profile": [
+      {
+        "name": "profile-cuda",
+        "returncode": 0,
+        "wall_seconds": 16.748264025000026,
+        "tokens": "198\n2\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=2 GENERATED=2 STARTUP_S=7.673 PREFILL_S=4.584 DECODE_TPS=0.359 WALL_S=15.043 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=11376 PEAK_RSS_KIB=522832",
+          "CUDA_PROFILE TRANSFORMER_S=4.059623 HEAD_S=2.931284 COPY_S=0.375406",
+          "CUDA_KERNEL_CALLS=3"
+        ]
+      },
+      {
+        "name": "hybrid-check",
+        "returncode": 0,
+        "wall_seconds": 10.84600215599994,
+        "tokens": "198\n2\n",
+        "metrics": [
+          "BACKEND=hybrid DEVICE=NVIDIA GK20A (Tegra K1) GPU_WEIGHTS=144643072",
+          "BACKEND=hybrid PROMPT_TOKENS=2 GENERATED=2 STARTUP_S=5.860 PREFILL_S=2.785 DECODE_TPS=0.745 WALL_S=9.987 CHECKED=455808 MAX_ABS_ERROR=5.7220459e-06",
+          "RSS_KIB=524944 PEAK_RSS_KIB=524944",
+          "CUDA_PROFILE TRANSFORMER_S=0.000000 HEAD_S=0.000000 COPY_S=0.000000",
+          "CUDA_KERNEL_CALLS=3"
+        ]
+      },
+      {
+        "name": "hybrid-100",
+        "returncode": 0,
+        "wall_seconds": 22.48573011899998,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n",
+        "metrics": [
+          "BACKEND=hybrid DEVICE=NVIDIA GK20A (Tegra K1) GPU_WEIGHTS=144643072",
+          "BACKEND=hybrid PROMPT_TOKENS=34 GENERATED=8 STARTUP_S=5.710 PREFILL_S=8.730 DECODE_TPS=0.973 WALL_S=21.633 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=524360 PEAK_RSS_KIB=524360",
+          "CUDA_PROFILE TRANSFORMER_S=0.000000 HEAD_S=0.000000 COPY_S=0.000000",
+          "CUDA_KERNEL_CALLS=8"
+        ]
+      },
+      {
+        "name": "hybrid-75",
+        "returncode": 0,
+        "wall_seconds": 22.78306692499973,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n",
+        "metrics": [
+          "BACKEND=hybrid DEVICE=NVIDIA GK20A (Tegra K1) GPU_WEIGHTS=144643072",
+          "BACKEND=hybrid PROMPT_TOKENS=34 GENERATED=8 STARTUP_S=5.695 PREFILL_S=8.664 DECODE_TPS=0.927 WALL_S=21.913 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=524360 PEAK_RSS_KIB=524360",
+          "CUDA_PROFILE TRANSFORMER_S=0.000000 HEAD_S=0.000000 COPY_S=0.000000",
+          "CUDA_KERNEL_CALLS=8"
+        ]
+      }
+    ],
+    "opt-coherent": [
+      {
+        "name": "coherent-check",
+        "returncode": 0,
+        "wall_seconds": 8.871070452999902,
+        "tokens": "198\n2\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "CUDA_LATENCY LAUNCH_S=0.082606 READ4_S=0.000262 VALUE=1",
+          "CUDA_LATENCY LAUNCH_S=0.001358 READ4_S=0.000209 VALUE=1",
+          "CUDA_LATENCY LAUNCH_S=0.001348 READ4_S=0.000208 VALUE=1",
+          "BACKEND=cuda PROMPT_TOKENS=2 GENERATED=2 STARTUP_S=6.947 PREFILL_S=1.024 DECODE_TPS=1.966 WALL_S=8.479 CHECKED=455808 MAX_ABS_ERROR=3.5047531e-05",
+          "RSS_KIB=524944 PEAK_RSS_KIB=524944",
+          "CUDA_PROFILE TRANSFORMER_S=0.200279 HEAD_S=0.125503 COPY_S=0.300722",
+          "CUDA_KERNEL_CALLS=3"
+        ]
+      },
+      {
+        "name": "coherent-cuda",
+        "returncode": 0,
+        "wall_seconds": 13.267911380999976,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n33071\n5373\n118280\n33108\n106875\n99610\n24641\n3837\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=34 GENERATED=16 STARTUP_S=6.999 PREFILL_S=2.668 DECODE_TPS=4.662 WALL_S=12.884 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=11376 PEAK_RSS_KIB=522960",
+          "CUDA_PROFILE TRANSFORMER_S=3.469258 HEAD_S=0.732868 COPY_S=1.655771",
+          "CUDA_KERNEL_CALLS=49"
+        ]
+      },
+      {
+        "name": "coherent-hybrid",
+        "returncode": 0,
+        "wall_seconds": 19.870739090999905,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n33071\n5373\n118280\n33108\n106875\n99610\n24641\n3837\n",
+        "metrics": [
+          "BACKEND=hybrid DEVICE=NVIDIA GK20A (Tegra K1) GPU_WEIGHTS=144643072",
+          "BACKEND=hybrid PROMPT_TOKENS=34 GENERATED=16 STARTUP_S=5.220 PREFILL_S=8.323 DECODE_TPS=2.512 WALL_S=19.515 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=524360 PEAK_RSS_KIB=524360",
+          "CUDA_PROFILE TRANSFORMER_S=0.000000 HEAD_S=0.000000 COPY_S=0.000000",
+          "CUDA_KERNEL_CALLS=16"
+        ]
+      },
+      {
+        "name": "coherent-hybrid-75",
+        "returncode": 0,
+        "wall_seconds": 19.29148326700033,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n33071\n5373\n118280\n33108\n106875\n99610\n24641\n3837\n",
+        "metrics": [
+          "BACKEND=hybrid DEVICE=NVIDIA GK20A (Tegra K1) GPU_WEIGHTS=144643072",
+          "BACKEND=hybrid PROMPT_TOKENS=34 GENERATED=16 STARTUP_S=5.225 PREFILL_S=8.160 DECODE_TPS=2.713 WALL_S=18.914 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=524360 PEAK_RSS_KIB=524360",
+          "CUDA_PROFILE TRANSFORMER_S=0.000000 HEAD_S=0.000000 COPY_S=0.000000",
+          "CUDA_KERNEL_CALLS=16"
+        ]
+      }
+    ],
+    "opt-sparse": [
+      {
+        "name": "sparse-top40-check",
+        "returncode": 0,
+        "wall_seconds": 8.185613340999225,
+        "tokens": "198\n17\n15\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=2 GENERATED=3 STARTUP_S=6.987 PREFILL_S=0.403 DECODE_TPS=4.460 WALL_S=7.839 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=12104 PEAK_RSS_KIB=522988",
+          "CUDA_KERNEL_CALLS=4"
+        ]
+      },
+      {
+        "name": "sparse-top64-check",
+        "returncode": 0,
+        "wall_seconds": 8.17049056199994,
+        "tokens": "198\n474\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=2 GENERATED=2 STARTUP_S=7.154 PREFILL_S=0.406 DECODE_TPS=4.347 WALL_S=7.789 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=12104 PEAK_RSS_KIB=522988",
+          "CUDA_KERNEL_CALLS=3"
+        ]
+      },
+      {
+        "name": "sparse-cuda",
+        "returncode": 0,
+        "wall_seconds": 11.844170974000008,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n33071\n5373\n118280\n33108\n106875\n99610\n24641\n3837\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=34 GENERATED=16 STARTUP_S=6.963 PREFILL_S=2.556 DECODE_TPS=7.712 WALL_S=11.463 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=11408 PEAK_RSS_KIB=522988",
+          "CUDA_KERNEL_CALLS=49"
+        ]
+      },
+      {
+        "name": "parallel-hybrid-90",
+        "returncode": 0,
+        "wall_seconds": 17.940809723999337,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n33071\n5373\n118280\n33108\n106875\n99610\n24641\n3837\n",
+        "metrics": [
+          "BACKEND=hybrid DEVICE=NVIDIA GK20A (Tegra K1) GPU_WEIGHTS=144643072",
+          "BACKEND=hybrid PROMPT_TOKENS=34 GENERATED=16 STARTUP_S=5.321 PREFILL_S=7.959 DECODE_TPS=3.492 WALL_S=17.575 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=524392 PEAK_RSS_KIB=524392",
+          "CUDA_KERNEL_CALLS=16"
+        ]
+      }
+    ],
+    "opt-final": [
+      {
+        "name": "legacy-coherent",
+        "returncode": 0,
+        "wall_seconds": 13.073806272000184,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n33071\n5373\n118280\n33108\n106875\n99610\n24641\n3837\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=34 GENERATED=16 STARTUP_S=3.240 PREFILL_S=5.115 DECODE_TPS=3.425 WALL_S=12.735 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=11368 PEAK_RSS_KIB=522952",
+          "CUDA_KERNEL_CALLS=49"
+        ]
+      },
+      {
+        "name": "cuda-512",
+        "returncode": 0,
+        "wall_seconds": 10.35091689500041,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n33071\n5373\n118280\n33108\n106875\n99610\n24641\n3837\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=34 GENERATED=16 STARTUP_S=3.128 PREFILL_S=4.117 DECODE_TPS=5.514 WALL_S=9.965 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=11408 PEAK_RSS_KIB=522860",
+          "CUDA_KERNEL_CALLS=49"
+        ]
+      },
+      {
+        "name": "cuda-1024",
+        "returncode": 0,
+        "wall_seconds": 8.124402890000056,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n33071\n5373\n118280\n33108\n106875\n99610\n24641\n3837\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=34 GENERATED=16 STARTUP_S=3.236 PREFILL_S=2.561 DECODE_TPS=7.753 WALL_S=7.732 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=11408 PEAK_RSS_KIB=523116",
+          "CUDA_KERNEL_CALLS=49"
+        ]
+      },
+      {
+        "name": "cuda-full-check",
+        "returncode": 0,
+        "wall_seconds": 25.324136383000223,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=34 GENERATED=8 STARTUP_S=3.056 PREFILL_S=18.047 DECODE_TPS=1.844 WALL_S=24.899 CHECKED=6229376 MAX_ABS_ERROR=0.00036239624",
+          "RSS_KIB=524972 PEAK_RSS_KIB=524972",
+          "CUDA_KERNEL_CALLS=41"
+        ]
+      },
+      {
+        "name": "hybrid-parallel-90",
+        "returncode": 0,
+        "wall_seconds": 13.88414236599965,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n33071\n5373\n118280\n33108\n106875\n99610\n24641\n3837\n",
+        "metrics": [
+          "BACKEND=hybrid DEVICE=NVIDIA GK20A (Tegra K1) GPU_WEIGHTS=144643072",
+          "BACKEND=hybrid PROMPT_TOKENS=34 GENERATED=16 STARTUP_S=1.503 PREFILL_S=7.888 DECODE_TPS=3.613 WALL_S=13.543 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=524392 PEAK_RSS_KIB=524392",
+          "CUDA_KERNEL_CALLS=16"
+        ]
+      },
+      {
+        "name": "cpu-current",
+        "returncode": 0,
+        "wall_seconds": 15.974270267000065,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n33071\n5373\n118280\n33108\n106875\n99610\n24641\n3837\n",
+        "metrics": [
+          "BACKEND=cpu PROMPT_TOKENS=34 GENERATED=16 STARTUP_S=0.000 PREFILL_S=9.461 DECODE_TPS=2.403 WALL_S=15.704 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=523896 PEAK_RSS_KIB=523896"
+        ]
+      }
+    ],
+    "opt-confirmation": [
+      {
+        "name": "sampling-full",
+        "returncode": 0,
+        "wall_seconds": 5.389365140000336,
+        "tokens": "198\n17\n15\n16\n21\n7948\n104554\n109873\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=2 GENERATED=8 STARTUP_S=3.143 PREFILL_S=0.396 DECODE_TPS=4.644 WALL_S=5.046 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=11496 PEAK_RSS_KIB=522988",
+          "CUDA_FORWARD_STEPS=9 CUDA_KERNEL_CALLS=17"
+        ]
+      },
+      {
+        "name": "sampling-candidates",
+        "returncode": 0,
+        "wall_seconds": 5.534487619000174,
+        "tokens": "198\n17\n15\n16\n21\n7948\n104554\n109873\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=2 GENERATED=8 STARTUP_S=3.176 PREFILL_S=0.402 DECODE_TPS=4.402 WALL_S=5.168 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=12104 PEAK_RSS_KIB=522988",
+          "CUDA_FORWARD_STEPS=9 CUDA_KERNEL_CALLS=25"
+        ]
+      },
+      {
+        "name": "hybrid-check",
+        "returncode": 0,
+        "wall_seconds": 4.589347656999962,
+        "tokens": "198\n2\n19709\n",
+        "metrics": [
+          "BACKEND=hybrid DEVICE=NVIDIA GK20A (Tegra K1) GPU_WEIGHTS=144643072",
+          "BACKEND=hybrid PROMPT_TOKENS=2 GENERATED=3 STARTUP_S=1.527 PREFILL_S=1.488 DECODE_TPS=1.597 WALL_S=4.267 CHECKED=607744 MAX_ABS_ERROR=5.7220459e-06",
+          "RSS_KIB=524976 PEAK_RSS_KIB=524976",
+          "CUDA_FORWARD_STEPS=4 CUDA_KERNEL_CALLS=4"
+        ]
+      },
+      {
+        "name": "cuda-final",
+        "returncode": 0,
+        "wall_seconds": 7.917753099000038,
+        "tokens": "46324\n101158\n115462\n107631\n72448\n3837\n109859\n100713\n33071\n5373\n118280\n33108\n106875\n99610\n24641\n3837\n",
+        "metrics": [
+          "BACKEND=cuda DEVICE=NVIDIA GK20A (Tegra K1) Q8_GROUP=64 GPU_WEIGHTS=525128192 GPU_KV=6291456",
+          "BACKEND=cuda PROMPT_TOKENS=34 GENERATED=16 STARTUP_S=3.048 PREFILL_S=2.559 DECODE_TPS=7.701 WALL_S=7.555 CHECKED=0 MAX_ABS_ERROR=0",
+          "RSS_KIB=11408 PEAK_RSS_KIB=522988",
+          "CUDA_FORWARD_STEPS=49 CUDA_KERNEL_CALLS=81"
+        ]
+      },
+      {
+        "name": "stories-runtime-regression",
+        "returncode": 0,
+        "metrics": [
+          "LLM_BACKEND=cuda OFFLOAD=transformer-forward DEVICE=NVIDIA GK20A (Tegra K1) CC=3.2 GPU_WEIGHT_BYTES=1056540 GPU_CACHE_BYTES=655360 CHECK=1",
+          "achieved tok/s: 140.271493",
+          "LLM_PROCESS_RSS_KIB=5476 PEAK_RSS_KIB=5476",
+          "LLM_CUDA_KERNEL_CALLS=32 CHECKED_LOGITS=16384 ERRORS=0 MAX_ABS_ERROR=2.86102295e-05"
+        ]
+      }
+    ]
+  }
+}

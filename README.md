@@ -20,10 +20,17 @@ sha256sum -c SHA256SUMS
 tar -xzf mocha-llm-v0.1.0-armhf.tar.gz
 cd mocha-llm-v0.1.0
 python3 tools/verify-install.py .
-./mocha-llm --model qwen --backend cpu -i '请用一句话介绍Linux。' -n 64
+cd ..
+curl -fLO https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.2.0/mocha-llm-v0.2.0-armhf-update.tar.gz
+curl -fLo SHA256SUMS-v0.2.0 https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.2.0/SHA256SUMS
+sha256sum -c SHA256SUMS-v0.2.0
+tar -xzf mocha-llm-v0.2.0-armhf-update.tar.gz
+cd mocha-llm-v0.2.0
+python3 tools/reuse-models.py --from ../mocha-llm-v0.1.0
+./mocha-llm --model qwen -i '请用一句话介绍Linux。' -n 64
 ```
 
-回答逐步输出到终端，运行统计写入标准错误。第一次调用会初始化 GPU，首字等待包含初始化和提示词处理时间。中文模型实测 CPU 三线程约 2.52 token/s、四线程约 3.09 token/s，CUDA 约 0.67 token/s；日常默认三线程 CPU，为桌面留出余量。需要最高实测 CPU 吞吐时使用 `--backend cpu --threads 4`。两个后端使用相同 Q8 权重。
+回答逐步输出到终端，运行统计写入标准错误。v0.2.0 默认使用 CUDA。优化后的中文 CUDA 实测约 7.75 token/s，初始化约 3.2 秒、34-token 提示词预填充约 2.6 秒；v0.1.0 的 CUDA 约 0.67 token/s。CPU 与 GPU 使用相同 Q8 权重。CPU 四线程此前约 3.09 token/s，本轮连续测试末尾约 2.40 token/s，结果受温度、调频和桌面负载影响。
 
 ```sh
 # 中文对话：有完整指令模板，默认使用 Qwen
@@ -32,12 +39,18 @@ python3 tools/verify-install.py .
 # 更高 CPU 吞吐，运行时可能影响桌面响应
 ./mocha-llm --backend cpu --threads 4 -i '用一句话介绍Linux。' -n 48 -t 0
 
-# 实际 CUDA 前向计算；此平台 GPU 路径目前更慢
+# 实际 CUDA 前向计算；v0.2.0 默认后端
 ./mocha-llm --backend cuda -i '用一句话介绍Linux。' -n 16 -t 0
 
 # 英文微型模型：用于 CUDA 连通性和数值测试
 ./mocha-llm --model stories --backend cuda -i 'Once upon a time' -n 96 -t 0
 ```
+
+## 升级到 v0.2.0
+
+新安装先按上面的命令取得 v0.1.0 的模型包，再安装 [v0.2.0 小型更新包](https://github.com/Pisces-Moze/mocha-moze-llm/releases/tag/v0.2.0)。模型权重不变，更新无需重复下载约 501 MiB 的 Qwen 文件。完整升级命令见 [部署教程](docs/deployment.md#升级到-v020)。
+
+CPU＋GPU 协同模式可运行 `./mocha-llm --backend hybrid --threads 4 --gpu-head-percent 90 -i "你好" -n 32`。实测约 3.61 token/s，当前比纯 CUDA 慢，保留用于调整分工；不作为默认。
 
 ## 两个模型
 
@@ -50,14 +63,15 @@ TinyStories 没有指令训练，把问题接成故事属于模型自身限制�
 
 Qwen 的 256-token 上限是这个移植版本的内存和延迟取舍，不是原模型的上限。当前只提供单次问答；每条命令重新建立模型和 KV cache，不自动保留历史。
 
-本次 34-token 提示词的 CPU 首字等待约 10 秒，CUDA 初始化与预填充合计约 52 秒；等待期间没有文本输出属于预期。具体耗时随提示词长度和系统负载变化。
+v0.2.0 的 CUDA 初始化与上述提示词预填充合计约 5.8 秒；等待期间没有文本输出属于预期。具体耗时随提示词长度和系统负载变化。
 
 ## 参数
 
 | 参数 | 默认值 | 含义 |
 | --- | --- | --- |
 | `--model` | `qwen` | `qwen` 或 `stories` |
-| `--backend` | `cpu` | GPU 或 NEON CPU；默认选择实测更快的 CPU，CUDA 失败会报错，不静默换后端 |
+| `--backend` | `cuda` | `cuda`、`cpu` 或 `hybrid`；默认 CUDA，失败会报错，不静默换后端 |
+| `--gpu-head-percent` | `90` | hybrid 的 GPU 词表行比例，可选 50／75／90／100；CPU 并行处理其余词表行 |
 | `-i` | 简短示例 | 提示词，中文模型自动套用对应 ChatML 模板 |
 | `-n` | `96` | Qwen：最多新生成 token；Stories：包含提示词的总推理步数 |
 | `-t` | `0.7` | 温度；`0` 为确定性贪心选择 |

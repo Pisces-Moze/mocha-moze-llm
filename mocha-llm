@@ -18,7 +18,9 @@ from tokenizer import Tokenizer
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--model', choices=['qwen', 'stories'], default='qwen')
-    parser.add_argument('--backend', choices=['cuda', 'cpu'], default='cpu')
+    parser.add_argument('--backend', choices=['cuda', 'cpu', 'hybrid'], default='cuda')
+    parser.add_argument('--gpu-head-percent', type=int, choices=[50,75,90,100], default=90,
+                        help='hybrid: percentage of vocabulary rows assigned to GPU')
     parser.add_argument('-i', '--prompt', default=None)
     parser.add_argument('-n', '--tokens', type=int, default=96, help='Qwen: maximum new tokens; Stories: total steps including prompt')
     parser.add_argument('-t', '--temperature', type=float, default=0.7)
@@ -29,6 +31,8 @@ def main():
     parser.add_argument('--threads', type=int, choices=[1, 2, 3, 4], default=3)
     parser.add_argument('--check', action='store_true', help='compare every CUDA logit to CPU; slower')
     args = parser.parse_args()
+    if args.model == 'stories' and args.backend == 'hybrid':
+        parser.error('hybrid is supported by the Qwen engine only')
     if not 1 <= args.tokens <= 384:
         parser.error('-n must be between 1 and 384')
     if args.temperature < 0 or not __import__('math').isfinite(args.temperature):
@@ -40,11 +44,11 @@ def main():
     if args.model == 'qwen' and Path('/proc/meminfo').exists():
         available = next(int(line.split()[1]) for line in Path('/proc/meminfo').read_text().splitlines()
                          if line.startswith('MemAvailable:'))
-        required = 1100 * 1024 if args.check and args.backend == 'cuda' else 600 * 1024
+        required = (1100 if args.check and args.backend == 'cuda' else 850 if args.backend == 'hybrid' else 600) * 1024
         if available < required:
             parser.error(f'Qwen needs at least {required//1024} MiB available; found {available//1024} MiB. Close unused applications first.')
     env = dict(os.environ, OMP_NUM_THREADS=str(args.threads), OMP_WAIT_POLICY='PASSIVE',
-               MOCHA_LLM_BACKEND=args.backend)
+               MOCHA_LLM_BACKEND=args.backend,MOCHA_LLM_GPU_HEAD_PERCENT=str(args.gpu_head_percent))
     if args.model == 'qwen':
         env.setdefault('MOCHA_LLM_CUDA_THREADS', '1024')
     if args.check:

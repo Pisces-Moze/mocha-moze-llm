@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <omp.h>
 #ifdef __ARM_NEON
 #include <arm_neon.h>
 #endif
@@ -20,10 +21,10 @@ static const unsigned char *base;
 static const Header *header;
 static std::vector<float> keys(LAYERS*CONTEXT*KV),values(keys.size());
 static float val(Tensor t,int i) {return ((const signed char *)(base+t.data))[i]*((const float *)(base+t.scales))[i/64];}
-static void mat(Tensor t,const float *x,float *y,bool add=false) {
+static void mat(Tensor t,const float *x,float *y,bool add=false,unsigned first=0) {
     const signed char *w=(const signed char *)(base+t.data);const float *sc=(const float *)(base+t.scales);
     #pragma omp parallel for schedule(static)
-    for(unsigned r=0;r<t.rows;r++) {
+    for(unsigned r=first;r<t.rows;r++) {
         float sum=0;
         for(unsigned g=0;g<t.cols/64;g++) {
             int off=r*t.cols+g*64;float dot=0;
@@ -47,7 +48,7 @@ static void rms(Tensor t,const float *x,float *y) {
     float sum=0;for(int i=0;i<DIM;i++)sum+=x[i]*x[i];float s=1/std::sqrt(sum/DIM+RMS_EPS);
     for(int i=0;i<DIM;i++)y[i]=x[i]*s*((const float *)(base+t.data))[i];
 }
-static void cpu(float *out,int token,int pos,bool project=true) {
+static void cpu(float *out,int token,int pos,bool project=true,bool hidden_only=false) {
     float x[DIM],n[DIM],q[DIM],k[KV],v[KV],a[CONTEXT],gate[HID],up[HID];
     for(int i=0;i<DIM;i++)x[i]=val(header->t[0],token*DIM+i);
     for(int l=0;l<LAYERS;l++) {
@@ -74,11 +75,12 @@ static void cpu(float *out,int token,int pos,bool project=true) {
         for(int i=0;i<HID;i++)gate[i]=(gate[i]/(1+std::exp(-gate[i])))*up[i];
         mat(header->t[t+7],gate,x,true);
     }
-    if(project){rms(header->t[TENSORS-1],x,n);mat(header->t[0],n,out);}
+    if(project){rms(header->t[TENSORS-1],x,n);
+        if(hidden_only)std::memcpy(out,n,sizeof(n));else mat(header->t[0],n,out);}
 }
 static double now() {return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();}
 int main(int argc,char **argv) {
-    if(argc!=11) {std::fprintf(stderr,"usage: engine MODEL TOKEN_IDS NEW_TOKENS cpu|cuda TEMPERATURE SEED CHECK REPEAT_PENALTY TOP_K TOP_P\n");return 2;}
+    if(argc!=11) {std::fprintf(stderr,"usage: engine MODEL TOKEN_IDS NEW_TOKENS cpu|cuda|hybrid TEMPERATURE SEED CHECK REPEAT_PENALTY TOP_K TOP_P\n");return 2;}
     int fd=open(argv[1],O_RDONLY);struct stat st;if(fd<0||fstat(fd,&st))return 2;
     base=(const unsigned char *)mmap(NULL,st.st_size,PROT_READ,MAP_PRIVATE,fd,0);close(fd);if(base==MAP_FAILED)return 2;
     header=(const Header *)base;
@@ -93,28 +95,70 @@ int main(int argc,char **argv) {
     float penalty=std::atof(argv[8]),top_p=std::atof(argv[10]);int top_k=std::atoi(argv[9]);
     if(prompt.empty()||count<1||prompt.size()+count>CONTEXT||temp<0||!std::isfinite(temp)||
        !std::isfinite(penalty)||penalty<1||top_k<1||top_k>VOCAB||!(top_p>0&&top_p<=1))return 2;
-    bool use_gpu=!std::strcmp(argv[4],"cuda"),check=std::atoi(argv[7]);
-    if(!use_gpu&&std::strcmp(argv[4],"cpu"))return 2;
+    bool use_gpu=!std::strcmp(argv[4],"cuda"),hybrid=!std::strcmp(argv[4],"hybrid"),check=std::atoi(argv[7]);
+    if(!use_gpu&&!hybrid&&std::strcmp(argv[4],"cpu"))return 2;
+    const char *percent_env=std::getenv("MOCHA_LLM_GPU_HEAD_PERCENT");int percent=percent_env?std::atoi(percent_env):100;
+    if(percent<1||percent>100)return 2;int gpu_rows=VOCAB*percent/100;
+    bool sparse=(use_gpu||hybrid)&&!check&&top_k<=64&&!std::getenv("MOCHA_LLM_FULL_LOGITS");
+    bool verify_candidates=use_gpu&&sparse&&std::getenv("MOCHA_LLM_VERIFY_CANDIDATES");
     double start=now();if(use_gpu&&gpu_init(base,st.st_size))return 3;
+    if(hybrid&&gpu_head_init(base))return 3;
     if(use_gpu&&!check)madvise((void *)base,st.st_size,MADV_DONTNEED);
     float logits[VOCAB],reference[VOCAB],max_error=0;unsigned long compared=0;
     double ready=now(),decode_start=0;int generated=0;token=prompt[0];std::vector<int> history=prompt;
     for(int pos=0;pos<(int)prompt.size()+count-1;pos++) {
         // Prompt-only steps update KV; their vocabulary projection is unused.
         bool project=check||pos+1>=(int)prompt.size();
+        if(hybrid) {
+            float hidden[DIM];cpu(hidden,token,pos,project,true);
+            if(project){int error=0;
+                // Keep CUDA on its owning host thread. Another OpenMP worker
+                // computes disjoint vocabulary rows while the GPU is active.
+                if(gpu_rows<VOCAB){int workers=1;
+                    #pragma omp parallel num_threads(2) shared(error,workers)
+                    {
+                        if(omp_get_thread_num()==0){workers=omp_get_num_threads();error=gpu_head_start(hidden,gpu_rows);
+                            if(!error)error=gpu_head_finish(logits,gpu_rows,!sparse);}
+                        else mat(header->t[0],hidden,logits,false,gpu_rows);
+                    }
+                    if(workers==1)mat(header->t[0],hidden,logits,false,gpu_rows);
+                }else{error=gpu_head_start(hidden,gpu_rows);if(!error)error=gpu_head_finish(logits,gpu_rows,!sparse);}
+                if(error)return 3;
+                if(sparse){int kept=std::min(64,(int)history.size());
+                    if(gpu_collect(logits,history.data()+history.size()-kept,kept,penalty,temp==0?1:top_k,gpu_rows))return 3;}}
+        }
         if(use_gpu) {
-            if(gpu_forward(logits,token,pos,project))return 3;
-            if(check) {cpu(reference,token,pos);for(int i=0;i<VOCAB;i++) {
+            if(gpu_forward(logits,token,pos,project,!sparse||verify_candidates))return 3;
+            if(project&&sparse){int kept=std::min(64,(int)history.size());
+                int k=temp==0?1:top_k;
+                if(verify_candidates)std::memcpy(reference,logits,sizeof(logits));
+                if(gpu_collect(logits,history.data()+history.size()-kept,kept,penalty,k,VOCAB))return 3;
+                if(verify_candidates){bool visited[VOCAB]={false};
+                    for(int j=history.size()-kept;j<(int)history.size();j++){int id=history[j];
+                        if(!visited[id]){reference[id]=reference[id]<0?reference[id]*penalty:reference[id]/penalty;visited[id]=true;}}
+#ifdef MOCHA_QWEN
+                    for(int id=151643;id<VOCAB;id++)if(id!=EOS)reference[id]=-1e30f;
+#else
+                    reference[0]=reference[1]=-1e30f;
+#endif
+                    std::vector<int> order(VOCAB);for(int i=0;i<VOCAB;i++)order[i]=i;
+                    std::partial_sort(order.begin(),order.begin()+k,order.end(),[&](int a,int b){return reference[a]>reference[b]||(reference[a]==reference[b]&&a<b);});
+                    for(int j=0;j<k;j++){int id=order[j];if(!std::isfinite(logits[id])||std::fabs(logits[id]-reference[id])>1e-5f*(1+std::fabs(reference[id]))){
+                        std::fprintf(stderr,"CANDIDATE CHECK FAILED pos=%d id=%d value=%g reference=%g\n",pos,id,logits[id],reference[id]);return 4;}}
+                }}
+        }
+        if((use_gpu||hybrid)&&check) {cpu(reference,token,pos);for(int i=0;i<VOCAB;i++) {
                 float d=std::fabs(logits[i]-reference[i]);max_error=std::max(d,max_error);compared++;
                 if(!std::isfinite(logits[i])||d>0.003f*(1+std::fabs(reference[i]))) {
                     std::fprintf(stderr,"CHECK FAILED pos=%d logit=%d actual=%g reference=%g\n",pos,i,logits[i],reference[i]);return 4;}
             }}
-        } else cpu(logits,token,pos,project);
+        if(!use_gpu&&!hybrid)cpu(logits,token,pos,project);
         if(pos+1<(int)prompt.size()) {token=prompt[pos+1];continue;}
         if(!decode_start)decode_start=now();
         bool seen[VOCAB]={false};
         for(int j=std::max(0,(int)history.size()-64);j<(int)history.size();j++) {
-            int id=history[j];if(!seen[id]){logits[id]=logits[id]<0?logits[id]*penalty:logits[id]/penalty;seen[id]=true;}
+            int id=history[j];if(sparse&&(!hybrid||id<gpu_rows))continue;
+            if(!seen[id]){logits[id]=logits[id]<0?logits[id]*penalty:logits[id]/penalty;seen[id]=true;}
         }
         // Model-specific control tokens; EOS is left available for sampling.
 #ifdef MOCHA_QWEN
@@ -124,7 +168,7 @@ int main(int argc,char **argv) {
 #endif
         if(temp==0)token=std::max_element(logits,logits+VOCAB)-logits;
         else {std::vector<int> order(VOCAB);for(int i=0;i<VOCAB;i++)order[i]=i;
-            std::partial_sort(order.begin(),order.begin()+top_k,order.end(),[&](int a,int b){return logits[a]>logits[b];});
+            std::partial_sort(order.begin(),order.begin()+top_k,order.end(),[&](int a,int b){return logits[a]>logits[b]||(logits[a]==logits[b]&&a<b);});
             float largest=logits[order[0]],sum=0;
             for(int j=0;j<top_k;j++){int i=order[j];logits[i]=std::exp((logits[i]-largest)/temp);sum+=logits[i];}
             float cutoff=0;int kept=0;while(kept<top_k&&cutoff<sum*top_p)cutoff+=logits[order[kept++]];
@@ -136,10 +180,10 @@ int main(int argc,char **argv) {
     }
     double done=now();
     std::fprintf(stderr,"BACKEND=%s PROMPT_TOKENS=%zu GENERATED=%d STARTUP_S=%.3f PREFILL_S=%.3f DECODE_TPS=%.3f WALL_S=%.3f CHECKED=%lu MAX_ABS_ERROR=%.8g\n",
-        use_gpu?"cuda":"cpu",prompt.size(),generated,ready-start,(decode_start?decode_start:done)-ready,
+        hybrid?"hybrid":use_gpu?"cuda":"cpu",prompt.size(),generated,ready-start,(decode_start?decode_start:done)-ready,
         generated>1?(generated-1)/(done-decode_start):0,done-start,compared,max_error);
     unsigned long rss=0,peak=0;char line[256];FILE *status=std::fopen("/proc/self/status","r");
     if(status){while(std::fgets(line,sizeof(line),status)) {std::sscanf(line,"VmRSS: %lu kB",&rss);std::sscanf(line,"VmHWM: %lu kB",&peak);}std::fclose(status);}
     std::fprintf(stderr,"RSS_KIB=%lu PEAK_RSS_KIB=%lu\n",rss,peak);
-    int result=use_gpu?gpu_finish():0;munmap((void *)base,st.st_size);return result;
+    int result=(use_gpu||hybrid)?gpu_finish():0;munmap((void *)base,st.st_size);return result;
 }

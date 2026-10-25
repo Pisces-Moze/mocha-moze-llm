@@ -14,6 +14,10 @@ enum { DIM=512, HID=1408, KV=128, HEAD=64, VOCAB=6400, CONTEXT=512, LAYERS=8,
 #endif
 struct Header { uint32_t magic,version,bytes,dim,hidden,layers,vocab,group; Tensor t[TENSORS]; };
 extern "C" int gpu_init(const void *,unsigned);
-extern "C" int gpu_forward(float *,int,int,int);
+extern "C" int gpu_forward(float *,int,int,int,int);
 extern "C" int gpu_finish();
+extern "C" int gpu_head_init(const void *);
+extern "C" int gpu_head_start(const float *,int);
+extern "C" int gpu_head_finish(float *,int,int);
+extern "C" int gpu_collect(float *,const int *,int,float,int,int);
 #endif
