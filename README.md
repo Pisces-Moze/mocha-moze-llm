@@ -1,6 +1,6 @@
 # Mocha LLM
 
-[代码许可：MIT](LICENSE) · [部署教程](docs/deployment.md) · [实机性能](docs/performance.md) · [源码构建](docs/build.md)
+[代码许可：MIT](LICENSE) · [当前安装](docs/install-current.md) · [版本选择](docs/versions.md) · [实机性能](docs/performance.md) · [源码构建](docs/build.md)
 
 在小米平板 Mocha（Tegra K1、ARMv7）上运行本地语言模型，使用参数切换微型故事、Qwen 0.5B、Llama 1B 和 Qwen 1.5B。0.5B 提供 CUDA／CPU／协同路径，大模型复用 llama.cpp 的 ARMv7 NEON CPU 路径，并提供有界缓存的原生 Q4 GPU 矩阵计算。
 
@@ -8,29 +8,23 @@
 
 ## 安装与运行
 
-预编译包见 [Releases](https://github.com/Pisces-Moze/mocha-moze-llm/releases)。基础包包含两个小模型，更新包增加 ARMhf 程序、私有开放 Runtime 和许可证；1B／1.5B 权重按需从固定上游版本下载。不需要在平板上安装编译器或 Python 推理框架。
+**当前版本：v0.4.0**。所有功能已汇总到这一版，旧版本不需要逐个安装。
+[版本与模型选择](docs/versions.md) 说明每一版增加了什么、默认使用哪个后端。
 
 ```sh
-# 在平板终端执行
-mkdir -p ~/Applications/mocha-llm
-cd ~/Applications/mocha-llm
-curl -fLO https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.1.0/mocha-llm-v0.1.0-armhf.tar.gz
-curl -fLO https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.1.0/SHA256SUMS
-sha256sum -c SHA256SUMS
-tar -xzf mocha-llm-v0.1.0-armhf.tar.gz
-cd mocha-llm-v0.1.0
-python3 tools/verify-install.py .
-cd ..
-curl -fLO https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.4.0/mocha-llm-v0.4.0-armhf-update.tar.gz
-curl -fLo SHA256SUMS-v0.4.0 https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.4.0/SHA256SUMS
-sha256sum -c SHA256SUMS-v0.4.0
-tar -xzf mocha-llm-v0.4.0-armhf-update.tar.gz
-cd mocha-llm-v0.4.0
-python3 tools/reuse-models.py --from ../mocha-llm-v0.1.0
-./mocha-llm --model qwen -i '请用一句话介绍Linux。' -n 64
+# 在平板执行，目标目录需要约 1.3 GiB 安装临时空间
+curl -fLo install-mocha-llm.py https://raw.githubusercontent.com/Pisces-Moze/mocha-moze-llm/main/tools/install.py
+python3 install-mocha-llm.py --directory ~/Applications/mocha-llm
+~/Applications/mocha-llm/current/mocha-llm --list-models
+~/Applications/mocha-llm/current/mocha-llm --model qwen -i '请用一句话介绍Linux。' -n 64
 ```
 
-回答逐步输出到终端，运行统计写入标准错误。v0.2.1 默认使用 CUDA。优化后的中文 CUDA 实测约 7.75 token/s，初始化约 3.2 秒、34-token 提示词预填充约 2.6 秒；v0.1.0 的 CUDA 约 0.67 token/s。CPU 与 GPU 使用相同 Q8 权重。CPU 四线程此前约 3.09 token/s，本轮连续测试末尾约 2.40 token/s，结果受温度、调频和桌面负载影响。
+安装器固定归档 SHA256，将当前程序、私有运行库和两个基础权重组成一个完整 v0.4.0 目录。
+旧基础包仅作为权重来源；安装完成后不运行旧程序。1B／1.5B 模型需按需下载，见下文。
+已安装用户可加 `--reuse-from /现有版本目录` 避免重复下载基础权重。
+使用 `--cache /归档目录` 可离线安装；不修改系统驱动、频率或全局图形库。
+
+回答逐步输出到终端，运行统计写入标准错误。当前 v0.4.0 的 Qwen 0.5B 默认使用 CUDA，沿用 v0.2.1 优化引擎。优化后的中文 CUDA 实测约 7.75 token/s，初始化约 3.2 秒、34-token 提示词预填充约 2.6 秒；v0.1.0 的 CUDA 约 0.67 token/s。CPU 与 GPU 使用相同 Q8 权重。CPU 四线程此前约 3.09 token/s，本轮连续测试末尾约 2.40 token/s，结果受温度、调频和桌面负载影响。
 
 ```sh
 # 中文对话：有完整指令模板，默认使用 Qwen
