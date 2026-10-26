@@ -21,8 +21,8 @@ def large_models():
     return json.loads((ROOT/'models/large-models.json').read_text(encoding='utf-8'))['models']
 
 def run_large(parser, args, model):
-    if args.backend != 'cpu':
-        parser.error('1B/1.5B GGUF models currently support --backend cpu (ARMv7 NEON). Use --model qwen for CUDA.')
+    if args.backend == 'hybrid':
+        parser.error('GGUF models support cpu or cuda; hybrid vocabulary splitting applies to Qwen 0.5B only')
     if args.check:
         parser.error('--check applies to the custom CUDA engine only')
     engine=ROOT/'bin/mocha-gguf-engine'
@@ -30,6 +30,7 @@ def run_large(parser, args, model):
     if not engine.is_file():parser.error('GGUF engine missing; install the v0.3.0 update first')
     if not weights.is_file():parser.error(f'Model missing. Run: python3 tools/fetch-models.py --model {args.model}')
     if weights.stat().st_size!=model['bytes']:parser.error('Model size mismatch; rerun tools/fetch-models.py to verify it')
+    available=448*1024
     if Path('/proc/meminfo').exists():
         available=next(int(line.split()[1]) for line in Path('/proc/meminfo').read_text().splitlines() if line.startswith('MemAvailable:'))
         required=model['minimum_available_mib']
@@ -42,8 +43,14 @@ def run_large(parser, args, model):
              '-b','32','-ub','32','-t',str(args.threads),'-ngl','0','-no-cnv','--no-display-prompt',
              '--no-context-shift','--temp',str(args.temperature),'--seed',str(args.seed),
              '--repeat-penalty',str(args.repeat_penalty),'--top-k',str(args.top_k),'--top-p',str(args.top_p)]
-    env=dict(os.environ,OMP_NUM_THREADS=str(args.threads),OMP_WAIT_POLICY='PASSIVE')
-    print(f"{model['name']} / Q4_K_M / ARMv7 NEON CPU",file=sys.stderr)
+    env=dict(os.environ,OMP_NUM_THREADS=str(args.threads),OMP_WAIT_POLICY='PASSIVE',
+             MOCHA_GGUF_CUDA='1' if args.backend=='cuda' else '0',MOCHA_GGUF_GPU_CACHE_MIB=str(args.gpu_cache_mib))
+    if args.backend=='cuda':
+        if args.gpu_cache_mib+256>available//1024:
+            parser.error('Requested GPU cache would leave less than 256 MiB available; use a smaller cache')
+        if not (ROOT/'runtime/lib/libmocha-gguf-cuda.so').is_file():parser.error('Install the Q4 CUDA bridge update first')
+        env['LD_LIBRARY_PATH']=str(ROOT/'runtime/lib')+(':'+env['LD_LIBRARY_PATH'] if env.get('LD_LIBRARY_PATH') else '')
+    print(f"{model['name']} / Q4_K_M / {'streamed quantized CUDA + CPU attention' if args.backend=='cuda' else 'ARMv7 NEON CPU'}",file=sys.stderr)
     return subprocess.call(command,env=env)
 
 
@@ -53,6 +60,8 @@ def main():
     parser.add_argument('--list-models', action='store_true', help='show model names, backends and installation state')
     parser.add_argument('--backend', choices=['cuda', 'cpu', 'hybrid'], default=None,
                         help='default: CUDA for qwen/stories, NEON CPU for 1B/1.5B GGUF')
+    parser.add_argument('--gpu-cache-mib', type=int,choices=[0,32,64,128,256],default=64,
+                        help='GGUF CUDA weight cache limit; an 8 MiB streaming tile and activation buffers are additional')
     parser.add_argument('--gpu-head-percent', type=int, choices=[50,75,90,100], default=90,
                         help='hybrid: percentage of vocabulary rows assigned to GPU')
     parser.add_argument('-i', '--prompt', default=None)
@@ -68,7 +77,8 @@ def main():
     args.model=ALIASES.get(args.model,args.model)
     models=large_models()
     if args.list_models:
-        for key,file,backend in [('qwen','qwen-q8.bin','cuda/cpu/hybrid'),('stories','stories260k.bin','cuda/cpu')]+[(k,v['filename'],'cpu') for k,v in models.items()]:
+        gguf_backend='cpu/cuda(exp)' if (ROOT/'runtime/lib/libmocha-gguf-cuda.so').is_file() else 'cpu'
+        for key,file,backend in [('qwen','qwen-q8.bin','cuda/cpu/hybrid'),('stories','stories260k.bin','cuda/cpu')]+[(k,v['filename'],gguf_backend) for k,v in models.items()]:
             print(f"{key:10} {backend:16} {'installed' if (ROOT/'models'/file).is_file() else 'not installed'}")
         return 0
     if args.backend is None:args.backend='cpu' if args.model in models else 'cuda'

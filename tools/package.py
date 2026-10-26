@@ -20,11 +20,12 @@ def main():
     p.add_argument('--qwen-engine', required=True, type=Path)
     p.add_argument('--stories-engine', required=True, type=Path)
     p.add_argument('--gguf-engine', type=Path, help='ARMhf llama.cpp executable; required for 0.3.0')
+    p.add_argument('--gguf-cuda-library',type=Path,help='optional native quantized CUDA bridge')
     p.add_argument('--qwen-weights', required=True, type=Path)
     p.add_argument('--stories-inputs', required=True, type=Path)
     p.add_argument('--runtime-prefix', required=True, type=Path)
     p.add_argument('--output', required=True, type=Path, help='new build directory')
-    p.add_argument('--version', default='0.3.0', choices=['0.1.0','0.2.0','0.2.1','0.3.0'])
+    p.add_argument('--version', default='0.4.0', choices=['0.1.0','0.2.0','0.2.1','0.3.0','0.4.0'])
     p.add_argument('--reuse-models', action='store_true', help='update archive; reuse verified weights from v0.1.0')
     a = p.parse_args()
     repo = Path(__file__).resolve().parents[1]
@@ -41,7 +42,8 @@ def main():
             source.write_bytes(raw.replace(b'\r\n',b'\n'))
     (root / 'bin').mkdir()
     engines=[(a.qwen_engine, 'mocha-qwen-engine'), (a.stories_engine, 'mocha-stories-engine')]
-    if a.version=='0.3.0' and not a.gguf_engine:p.error('--gguf-engine is required for 0.3.0')
+    if a.version in ['0.3.0','0.4.0'] and not a.gguf_engine:p.error('--gguf-engine is required for GGUF releases')
+    if a.version=='0.4.0' and not a.gguf_cuda_library:p.error('--gguf-cuda-library is required for 0.4.0')
     if a.gguf_engine:engines.append((a.gguf_engine,'mocha-gguf-engine'))
     for source, name in engines:
         raw = source.read_bytes()
@@ -74,6 +76,11 @@ def main():
     for alias, target in {'libucuda.so.1': 'libucuda.so.1.0.0', 'libgdev.so.1': 'libgdev.so.1.0.0',
                           'libcuda.so.1': 'libucuda.so.1.0.0', 'libcudart.so.3': 'libucuda.so.1.0.0'}.items():
         shutil.copyfile(lib / target, lib / alias)
+    if a.gguf_cuda_library:
+        raw=a.gguf_cuda_library.read_bytes()
+        if raw[:5]!=b'\x7fELF\x01' or int.from_bytes(raw[18:20],'little')!=40:
+            raise ValueError('GGUF CUDA library must be ELF32 ARM')
+        shutil.copyfile(a.gguf_cuda_library,lib/'libmocha-gguf-cuda.so')
     (root / 'mocha-llm').chmod(0o755)
     files = {str(f.relative_to(root)).replace('\\', '/'): {'bytes': f.stat().st_size, 'sha256': digest(f)}
              for f in sorted(root.rglob('*')) if f.is_file()}

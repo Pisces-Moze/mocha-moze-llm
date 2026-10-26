@@ -145,3 +145,23 @@ python3 tools/fetch-models.py --model 1.5b --base-url https://hf-mirror.com
 1B 的主要支持语言不含中文，中文问答优先选 1.5B。Llama 具有独立的 Meta 许可证和使用政策，见 `licenses/`；工具代码的 MIT 不会改变模型许可。
 
 卸载可选模型时，先退出推理，再删除其 `models/` 链接和实际外部权重文件；保留其他模型。回退只需运行旧版本目录中的 `mocha-llm`。更新不更改系统 GPU 驱动或全局运行库。
+
+## v0.4.0：可选 Q4 CUDA
+
+下载并校验 v0.4.0 更新包，解压到旧版本旁边。旧权重不需要重新下载：
+
+```sh
+curl -fLO https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.4.0/mocha-llm-v0.4.0-armhf-update.tar.gz
+curl -fLo SHA256SUMS-v0.4.0 https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.4.0/SHA256SUMS
+sha256sum -c SHA256SUMS-v0.4.0
+tar -xzf mocha-llm-v0.4.0-armhf-update.tar.gz
+cd mocha-llm-v0.4.0
+python3 tools/reuse-models.py --from ../mocha-llm-v0.3.0
+python3 tools/fetch-models.py --model 1b --directory ../mocha-llm-v0.3.0/models
+python3 tools/fetch-models.py --model 1.5b --directory ../mocha-llm-v0.3.0/models
+./mocha-llm --model 1.5b --backend cuda --gpu-cache-mib 64 -i '你好' -n 16
+```
+
+最后两个复用命令会核对完整哈希；若旧版本没有安装对应模型，则按清单下载。旧权重若在外部目录，更新后的链接直接指向实际文件，避免依赖旧版本的中间链接。若实际文件仍位于旧版本内部，则卸载旧版本前仍须保留或迁移它。
+
+大模型默认仍为 CPU。CUDA 桥接只接管支持的量化矩阵，不等于完整 PyTorch／AirLLM，也不保证加速。流式上传和算子调度的代价、内存开销及已撤回的大缓存实验见 [说明](streamed-cuda.md)。

@@ -12,7 +12,11 @@ The Llama quantization is distributed by bartowski; fixed revisions/hashes are
 in models/large-models.json. Weights are downloaded separately, not stored in Git.
 See licenses/Llama-3.2-LICENSE.txt and licenses/Llama-3.2-USE-POLICY.md.
 The ARMv7 CPU GGUF engine is llama.cpp b4514, MIT, from the ggml authors.
-See licenses/llama.cpp-MIT.txt; this engine does not use the Mocha CUDA runtime.
+See licenses/llama.cpp-MIT.txt. CPU mode does not use the Mocha CUDA runtime;
+the optional native GGUF quantized matmul bridge uses the application-private runtime.
+The bridge's quantized block interpretation follows ggml (MIT).
+AirLLM (Apache-2.0) is a design reference for bounded streaming, not a bundled
+framework or copied implementation; its PyTorch stack is not installed by this tool.
 
 MiniMind2-Small development reference tokenizer and model architecture:
 jingyaogong / MiniMind, Apache-2.0; see licenses/MiniMind-Apache-2.0.txt.

@@ -9,10 +9,12 @@
       "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
       "url": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/067b946cf014b7c697f3654f621d577a3e3afd1c/Llama-3.2-1B-Instruct-Q4_K_M.gguf",
       "quantization": "Q4_K_M",
-      "backend": "cpu",
+      "backend": "cpu/cuda",
       "context": 1024,
       "minimum_available_mib": 1050,
-      "license": "Llama-3.2"
+      "license": "Llama-3.2",
+      "default_backend": "cpu",
+      "cuda_status": "experimental; short functional checks only"
     },
     "qwen1.5b": {
       "name": "Qwen2.5 1.5B Instruct",
@@ -23,17 +25,31 @@
       "sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
       "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/91cad51170dc346986eccefdc2dd33a9da36ead9/qwen2.5-1.5b-instruct-q4_k_m.gguf",
       "quantization": "Q4_K_M",
-      "backend": "cpu",
+      "backend": "cpu/cuda",
       "context": 1024,
       "minimum_available_mib": 1150,
-      "license": "Apache-2.0"
+      "license": "Apache-2.0",
+      "default_backend": "cpu",
+      "cuda_status": "experimental; short functional checks only"
     }
   },
   "engine": {
     "repository": "https://github.com/ggml-org/llama.cpp",
     "tag": "b4514",
     "commit": "ec7f3ac9ab33e46b136eb5ab6a76c4d81f57c7f1",
-    "backend": "ARMv7 NEON CPU",
-    "license": "MIT"
+    "backend": "ARMv7 NEON CPU + optional native quantized CUDA matmul",
+    "license": "MIT",
+    "cuda_bridge": {
+      "source": "src/gguf-cuda.cu",
+      "patch": "tools/patch-gguf-cuda.py",
+      "quant_types": [
+        "Q4_K",
+        "Q6_K",
+        "Q8_0"
+      ],
+      "gpu": "GK20A sm_32",
+      "cache_default_mib": 64,
+      "stream_tile_mib": 8
+    }
   }
 }

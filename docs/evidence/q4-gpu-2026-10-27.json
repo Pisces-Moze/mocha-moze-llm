@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-27",
+  "numeric": {
+    "returncode": 0,
+    "reference": "pinned upstream ggml dequantization",
+    "checks": [
+      "Q4_GPU_CHECK type=12 cols=512 rows=17 vectors=3 max_error=1.93715e-07",
+      "Q4_GPU_CHECK type=14 cols=512 rows=17 vectors=3 max_error=1.3411e-07",
+      "Q4_GPU_CHECK type=8 cols=512 rows=17 vectors=3 max_error=9.68575e-08",
+      "Q4_GPU_CHECK type=12 cols=4096 rows=4097 vectors=2 max_error=2.08616e-07"
+    ],
+    "gpu_stats": [
+      "GGUF_CUDA_STATS CALLS=4 Q4_K=2 Q6_K=1 Q8_0=1 CACHE_HITS=0 UPLOAD_BYTES=9460772 CACHE_BYTES=0 TILE_BYTES=8388608 UPLOAD_S=0.036069 COMPUTE_S=0.094613"
+    ]
+  },
+  "final_short_check": {
+    "date": "2026-10-27",
+    "models": [
+      {
+        "model": "llama1b",
+        "backend": "streamed GGUF CUDA + CPU attention",
+        "returncode": 0,
+        "prompt": "Explain Linux in one short sentence.",
+        "output": "Linux is an open\n\n",
+        "wall_seconds": 47.79,
+        "max_rss_kib": 863992,
+        "performance_lines": [
+          "GGUF_CUDA DEVICE=NVIDIA GK20A (Tegra K1) CACHE_LIMIT_MIB=64 STREAM_TILE_MIB=8 QUANTIZED_WEIGHTS=1",
+          "llama_perf_context_print:        load time =   25108.78 ms",
+          "llama_perf_context_print: prompt eval time =   13001.27 ms /    19 tokens (  684.28 ms per token,     1.46 tokens per second)",
+          "llama_perf_context_print:        eval time =    8621.78 ms /     3 runs   ( 2873.93 ms per token,     0.35 tokens per second)",
+          "GGUF_CUDA_STATS CALLS=565 Q4_K=480 Q6_K=85 Q8_0=0 CACHE_HITS=60 UPLOAD_BYTES=3730771968 CACHE_BYTES=66797568 TILE_BYTES=8388608 UPLOAD_S=10.312179 COMPUTE_S=7.591707"
+        ]
+      },
+      {
+        "model": "qwen1.5b",
+        "backend": "streamed GGUF CUDA + CPU attention",
+        "returncode": 0,
+        "prompt": "请用一句话介绍Linux。",
+        "output": "Linux是一种自由和\n\n",
+        "wall_seconds": 67.6,
+        "max_rss_kib": 1156760,
+        "performance_lines": [
+          "GGUF_CUDA DEVICE=NVIDIA GK20A (Tegra K1) CACHE_LIMIT_MIB=64 STREAM_TILE_MIB=8 QUANTIZED_WEIGHTS=1",
+          "llama_perf_context_print:        load time =   33893.20 ms",
+          "llama_perf_context_print: prompt eval time =   16742.58 ms /    14 tokens ( 1195.90 ms per token,     0.84 tokens per second)",
+          "llama_perf_context_print:        eval time =   15558.93 ms /     3 runs   ( 5186.31 ms per token,     0.19 tokens per second)",
+          "GGUF_CUDA_STATS CALLS=985 Q4_K=840 Q6_K=145 Q8_0=0 CACHE_HITS=104 UPLOAD_BYTES=4629514752 CACHE_BYTES=67018752 TILE_BYTES=8388608 UPLOAD_S=17.502362 COMPUTE_S=9.238779"
+        ]
+      }
+    ]
+  },
+  "conditions": {
+    "backend": "quantized CUDA matmul + CPU attention/norm/KV/sampling",
+    "weight_cache_mib": 64,
+    "stream_tile_mib": 8,
+    "temporary_sleep_idle_inhibition": true,
+    "system_clock_policy_changed": false,
+    "long_duration_stability_proven": false
+  },
+  "rejected_experiment": "Single large cache arena lost management connectivity and required user reboot; no persistent kernel record, root cause unknown. Large cache pool and automatic enlargement removed. Another interrupted session had empty model logs.",
+  "binaries": {
+    "libmocha-gguf-cuda.so": "fa49e727028c9541768a432558dcf10f9b78fe24bcbb151ad2a12e5229c333f8",
+    "mocha-gguf-engine": "9d4780e2c9522513c22dbccd629959c3d4c240010197d11b6c4ef47c712c1d24"
+  }
+}

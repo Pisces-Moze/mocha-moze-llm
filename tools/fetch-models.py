@@ -45,10 +45,11 @@ def main():
             if partial.stat().st_size!=m['bytes'] or digest(partial)!=m['sha256']:p.error('Downloaded model failed SHA256 verification: '+str(partial))
             partial.replace(dest)
         link=root/'models'/m['filename']
+        actual=dest.resolve()
         if link.absolute()!=dest:
             if link.is_symlink():
-                if link.resolve()!=dest:p.error('Model link points elsewhere: '+str(link))
+                if link.resolve()!=actual:p.error('Model link points elsewhere: '+str(link))
             elif link.exists():p.error('Release already has a separate model file: '+str(link))
-            else:link.symlink_to(dest)
+            else:link.symlink_to(actual)
         print('Verified and installed:',key,dest)
 if __name__=='__main__':main()

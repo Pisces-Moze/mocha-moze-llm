@@ -2,7 +2,7 @@
 
 [代码许可：MIT](LICENSE) · [部署教程](docs/deployment.md) · [实机性能](docs/performance.md) · [源码构建](docs/build.md)
 
-在小米平板 Mocha（Tegra K1、ARMv7）上运行本地语言模型，使用参数切换微型故事、Qwen 0.5B、Llama 1B 和 Qwen 1.5B。0.5B 提供 CUDA／CPU／协同路径，新增大模型使用 llama.cpp 的 ARMv7 NEON CPU 量化推理。
+在小米平板 Mocha（Tegra K1、ARMv7）上运行本地语言模型，使用参数切换微型故事、Qwen 0.5B、Llama 1B 和 Qwen 1.5B。0.5B 提供 CUDA／CPU／协同路径，大模型复用 llama.cpp 的 ARMv7 NEON CPU 路径，并提供有界缓存的原生 Q4 GPU 矩阵计算。
 
 这是针对 Mocha 开放驱动栈的实验工具。CUDA 路径执行真实 GPU 前向计算；速度取决于模型和开放 Runtime，不能据此认为 GPU 一定快于 CPU。
 
@@ -21,11 +21,11 @@ tar -xzf mocha-llm-v0.1.0-armhf.tar.gz
 cd mocha-llm-v0.1.0
 python3 tools/verify-install.py .
 cd ..
-curl -fLO https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.3.0/mocha-llm-v0.3.0-armhf-update.tar.gz
-curl -fLo SHA256SUMS-v0.3.0 https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.3.0/SHA256SUMS
-sha256sum -c SHA256SUMS-v0.3.0
-tar -xzf mocha-llm-v0.3.0-armhf-update.tar.gz
-cd mocha-llm-v0.3.0
+curl -fLO https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.4.0/mocha-llm-v0.4.0-armhf-update.tar.gz
+curl -fLo SHA256SUMS-v0.4.0 https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.4.0/SHA256SUMS
+sha256sum -c SHA256SUMS-v0.4.0
+tar -xzf mocha-llm-v0.4.0-armhf-update.tar.gz
+cd mocha-llm-v0.4.0
 python3 tools/reuse-models.py --from ../mocha-llm-v0.1.0
 ./mocha-llm --model qwen -i '请用一句话介绍Linux。' -n 64
 ```
@@ -48,7 +48,7 @@ python3 tools/reuse-models.py --from ../mocha-llm-v0.1.0
 
 ## 升级到 v0.2.1
 
-历史版本 v0.2.1 也可从 v0.1.0 模型包升级：[小型更新包](https://github.com/Pisces-Moze/mocha-moze-llm/releases/tag/v0.2.1)。模型权重不变，更新无需重复下载约 501 MiB 的 Qwen 文件。旧版升级命令见 [部署教程](docs/deployment.md#升级到-v021)；当前安装入口使用上面的 v0.3.0。
+历史版本 v0.2.1 也可从 v0.1.0 模型包升级：[小型更新包](https://github.com/Pisces-Moze/mocha-moze-llm/releases/tag/v0.2.1)。模型权重不变，更新无需重复下载约 501 MiB 的 Qwen 文件。旧版升级命令见 [部署教程](docs/deployment.md#升级到-v021)；当前安装入口使用上面的 v0.4.0。
 
 CPU＋GPU 协同模式可运行 `./mocha-llm --backend hybrid --threads 4 --gpu-head-percent 90 -i "你好" -n 32`。实测约 3.61 token/s，当前比纯 CUDA 慢，保留用于调整分工；不作为默认。
 
@@ -69,9 +69,22 @@ python3 tools/fetch-models.py --model 1.5b
 
 两份新增权重合计约 1.79 GiB。每份下载后都验证 SHA256，并要求目标分区保留至少 256 MiB。空间不足时用 `--directory /path/on/another/filesystem` 分开放置，工具自动建立模型链接；中国大陆可加 `--base-url https://hf-mirror.com`，哈希校验仍强制执行。
 
-大模型默认选择 CPU，显式指定 CUDA 会报出支持范围。当前开放 CUDA 引擎读取专用 Q8 格式，不能直接读取 GGUF。1B 更适合英文，中文优先使用 Qwen 1.5B。一次只加载被选中的模型；程序退出后释放其缓存。完整升级、空间规划与模型卸载见 [部署教程](docs/deployment.md#v030大模型)。
+v0.3.0 的大模型仅支持 CPU；v0.4.0 新增下方的 GGUF CUDA 桥接，默认仍使用 CPU。1B 更适合英文，中文优先使用 Qwen 1.5B。一次只加载被选中的模型；程序退出后释放其缓存。完整升级、空间规划与模型卸载见 [部署教程](docs/deployment.md#v030大模型)。
 
 2026-10-27 实机短回答验证：1B 约 1.18 token/s、峰值 RSS 842 MiB；1.5B 约 0.95 token/s、峰值 RSS 1127 MiB。两者均保持桌面运行、使用默认三线程；加载和首轮回答分别合计约 49／53 秒。结果是短时功能检查，详见 [记录与测量口径](docs/performance.md#v030大模型)。
+
+## v0.4.0：Q4 GPU 与流式缓存
+
+```sh
+./mocha-llm --model 1b --backend cuda --gpu-cache-mib 64 -i 'Explain Linux briefly.' -n 32
+./mocha-llm --model 1.5b --backend cuda --gpu-cache-mib 64 -i '请介绍Linux。' -n 32
+```
+
+Q4_K_M 的 Q4_K／Q6_K 矩阵和 Q8_0 均有真实 GK20A 内核，注意力、KV cache、归一化和采样沿用 CPU。采用 AirLLM 式按需加载思想：量化块直接送入 GPU，默认保留最多 64 MiB 量化权重缓存，剩余权重以 8 MiB 块流式传输，不建立完整 FP32 权重副本。
+
+这是原生有界流式桥接，**不是已移植的 AirLLM／PyTorch 框架**。GPU 不保证更快；目前默认保留 NEON CPU。数值检查、实际速度、缓存开销和构建方式见 [流式 CUDA 说明](docs/streamed-cuda.md) 与 [实机性能](docs/performance.md)。
+
+诊断中出现过需要重启恢复的死机，长时间稳定性尚未解决。Q4 CUDA 标为实验性，使用时保持设备唤醒；当前短检查约 0.35／0.19 token/s，日常运行仍建议使用默认 CPU。
 
 ## 模型
 
@@ -79,8 +92,8 @@ python3 tools/fetch-models.py --model 1.5b
 | --- | --- | --- | --- |
 | Qwen2.5-0.5B-Instruct | 中文问答、简单指令 | 分组 Q8，约 501 MiB | 1024 token |
 | TinyStories 260K | 英文故事续写、CUDA 最小示例 | FP32，约 1 MiB | 512 token |
-| Llama 3.2 1B Instruct | 英文指令、较大模型对照 | GGUF Q4_K_M，约 770 MiB | 1024 token；NEON CPU |
-| Qwen2.5 1.5B Instruct | 中文问答、较大模型 | GGUF Q4_K_M，约 1066 MiB | 1024 token；NEON CPU |
+| Llama 3.2 1B Instruct | 英文指令、较大模型对照 | GGUF Q4_K_M，约 770 MiB | 1024 token；CPU／Q4 CUDA |
+| Qwen2.5 1.5B Instruct | 中文问答、较大模型 | GGUF Q4_K_M，约 1066 MiB | 1024 token；CPU／Q4 CUDA |
 
 TinyStories 没有指令训练，把问题接成故事属于模型自身限制。Qwen 能跟随中文指令，但仍可能产生错误，不具备联网检索能力。
 
@@ -96,6 +109,7 @@ v0.2.1 的 CUDA 初始化与上述提示词预填充合计约 5.8 秒；等待�
 | `--list-models` | 关闭 | 列出模型、支持后端及安装状态 |
 | `--backend` | 按模型选择 | 小模型默认 `cuda`，1B／1.5B 默认 `cpu`；`hybrid` 仅用于 Qwen 0.5B，后端不匹配时明确报错 |
 | `--gpu-head-percent` | `90` | hybrid 的 GPU 词表行比例，可选 50／75／90／100；CPU 并行处理其余词表行 |
+| `--gpu-cache-mib` | `64` | GGUF CUDA 的量化权重缓存；可选 0／32／64／128／256 MiB，输入输出和驱动内存另计 |
 | `-i` | 简短示例 | 提示词，中文模型自动套用对应 ChatML 模板 |
 | `-n` | `96` | 指令模型：最多新生成 token；Stories：包含提示词的总推理步数 |
 | `-t` | `0.7` | 温度；`0` 为确定性贪心选择 |

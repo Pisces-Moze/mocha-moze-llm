@@ -6,6 +6,7 @@ if [ "$#" -ne 2 ]; then echo "usage: $0 LLAMA_CPP_SOURCE OUTPUT_DIRECTORY" >&2; 
 source_dir=$(realpath "$1"); mkdir -p "$2"; output=$(realpath "$2")
 expected=ec7f3ac9ab33e46b136eb5ab6a76c4d81f57c7f1
 test "$(git -C "$source_dir" rev-parse HEAD)" = "$expected"
+python3 "$(dirname "$0")/patch-gguf-cuda.py" "$source_dir"
 cat > "$output/armv7.cmake" <<'EOF'
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR armv7)
