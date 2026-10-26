@@ -3,6 +3,7 @@
 """Mocha ARMv7 / GK20A local language model launcher."""
 import argparse
 import codecs
+import json
 import os
 import signal
 import subprocess
@@ -14,11 +15,44 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / 'src'))
 from tokenizer import Tokenizer
 
+ALIASES = {'1b':'llama1b', '1.5b':'qwen1.5b', 'qwen0.5b':'qwen'}
+
+def large_models():
+    return json.loads((ROOT/'models/large-models.json').read_text(encoding='utf-8'))['models']
+
+def run_large(parser, args, model):
+    if args.backend != 'cpu':
+        parser.error('1B/1.5B GGUF models currently support --backend cpu (ARMv7 NEON). Use --model qwen for CUDA.')
+    if args.check:
+        parser.error('--check applies to the custom CUDA engine only')
+    engine=ROOT/'bin/mocha-gguf-engine'
+    weights=ROOT/'models'/model['filename']
+    if not engine.is_file():parser.error('GGUF engine missing; install the v0.3.0 update first')
+    if not weights.is_file():parser.error(f'Model missing. Run: python3 tools/fetch-models.py --model {args.model}')
+    if weights.stat().st_size!=model['bytes']:parser.error('Model size mismatch; rerun tools/fetch-models.py to verify it')
+    if Path('/proc/meminfo').exists():
+        available=next(int(line.split()[1]) for line in Path('/proc/meminfo').read_text().splitlines() if line.startswith('MemAvailable:'))
+        required=model['minimum_available_mib']
+        if available<required*1024:parser.error(f"{model['name']} needs {required} MiB available; found {available//1024} MiB. Close the browser and unused applications.")
+    prompt=args.prompt or ('Please introduce yourself briefly.' if args.model=='llama1b' else '你好，请简单介绍一下自己。')
+    if args.model=='llama1b':
+        text='<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n'+prompt+'<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n'
+    else:text='<|im_start|>user\n'+prompt+'<|im_end|>\n<|im_start|>assistant\n'
+    command=[str(engine),'-m',str(weights),'-p',text,'-n',str(args.tokens),'-c','1024',
+             '-b','32','-ub','32','-t',str(args.threads),'-ngl','0','-no-cnv','--no-display-prompt',
+             '--no-context-shift','--temp',str(args.temperature),'--seed',str(args.seed),
+             '--repeat-penalty',str(args.repeat_penalty),'--top-k',str(args.top_k),'--top-p',str(args.top_p)]
+    env=dict(os.environ,OMP_NUM_THREADS=str(args.threads),OMP_WAIT_POLICY='PASSIVE')
+    print(f"{model['name']} / Q4_K_M / ARMv7 NEON CPU",file=sys.stderr)
+    return subprocess.call(command,env=env)
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--model', choices=['qwen', 'stories'], default='qwen')
-    parser.add_argument('--backend', choices=['cuda', 'cpu', 'hybrid'], default='cuda')
+    parser.add_argument('--model', choices=['qwen','stories','llama1b','qwen1.5b']+list(ALIASES), default='qwen')
+    parser.add_argument('--list-models', action='store_true', help='show model names, backends and installation state')
+    parser.add_argument('--backend', choices=['cuda', 'cpu', 'hybrid'], default=None,
+                        help='default: CUDA for qwen/stories, NEON CPU for 1B/1.5B GGUF')
     parser.add_argument('--gpu-head-percent', type=int, choices=[50,75,90,100], default=90,
                         help='hybrid: percentage of vocabulary rows assigned to GPU')
     parser.add_argument('-i', '--prompt', default=None)
@@ -31,9 +65,16 @@ def main():
     parser.add_argument('--threads', type=int, choices=[1, 2, 3, 4], default=3)
     parser.add_argument('--check', action='store_true', help='compare every CUDA logit to CPU; slower')
     args = parser.parse_args()
+    args.model=ALIASES.get(args.model,args.model)
+    models=large_models()
+    if args.list_models:
+        for key,file,backend in [('qwen','qwen-q8.bin','cuda/cpu/hybrid'),('stories','stories260k.bin','cuda/cpu')]+[(k,v['filename'],'cpu') for k,v in models.items()]:
+            print(f"{key:10} {backend:16} {'installed' if (ROOT/'models'/file).is_file() else 'not installed'}")
+        return 0
+    if args.backend is None:args.backend='cpu' if args.model in models else 'cuda'
     if args.model == 'stories' and args.backend == 'hybrid':
         parser.error('hybrid is supported by the Qwen engine only')
-    context = 1024 if args.model == 'qwen' else 512
+    context = 512 if args.model == 'stories' else 1024
     if not 1 <= args.tokens <= context:
         parser.error(f'-n must be between 1 and {context}; Qwen must also leave space for the prompt and chat template')
     if args.temperature < 0 or not __import__('math').isfinite(args.temperature):
@@ -42,6 +83,8 @@ def main():
         parser.error('repeat penalty must be finite and at least 1')
     if not 1 <= args.top_k <= 151643 or not 0 < args.top_p <= 1:
         parser.error('top-k must be 1..151643; top-p must be (0,1]')
+    if args.model in models:
+        return run_large(parser,args,models[args.model])
     if args.model == 'qwen' and Path('/proc/meminfo').exists():
         available = next(int(line.split()[1]) for line in Path('/proc/meminfo').read_text().splitlines()
                          if line.startswith('MemAvailable:'))

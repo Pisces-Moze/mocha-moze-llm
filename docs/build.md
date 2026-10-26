@@ -70,6 +70,7 @@ sh src/stories/build-llm.sh /path/to/stories-inputs \
 python3 tools/package.py \
   --qwen-engine /path/to/qwen-output/mocha-minimind-engine \
   --stories-engine /path/to/stories-output/mocha-cuda-llm-engine \
+  --gguf-engine /path/to/gguf-output/mocha-gguf-engine \
   --qwen-weights /path/to/qwen-q8.bin \
   --stories-inputs /path/to/stories-inputs \
   --runtime-prefix /path/to/tested-runtime-prefix \
@@ -78,7 +79,7 @@ python3 tools/package.py \
 
 打包器只复制明确列出的开放库、程序和模型，生成每个文件的 SHA256 清单，以及压缩包校验文件。权重随 Release 分发；Git 只保存实现、分词器、来源、许可证和实测记录。
 
-当前打包器默认版本为 `0.2.1`。增加 `--reuse-models` 可生成不含三份大模型输入的更新包；清单仍包含这些文件的预期大小与哈希，接收端必须运行 `tools/reuse-models.py --from OLD_RELEASE` 后再校验。构建和测试所用的 Runtime 前缀需同时包含新 `libgdev.so.1.0.0` 与新 `libucuda.so.1.0.0`，只替换后者无法得到 coherent 缓冲优化。
+当前打包器默认版本为 `0.3.0`。增加 `--reuse-models` 可生成不含原有三份模型输入的更新包；清单仍包含这些文件的预期大小与哈希，接收端必须运行 `tools/reuse-models.py --from OLD_RELEASE` 后再校验。构建和测试所用的 Runtime 前缀需同时包含新 `libgdev.so.1.0.0` 与新 `libucuda.so.1.0.0`，只替换后者无法得到 coherent 缓冲优化。
 
 常规测试：`python3 -m unittest discover -s tests -v`。真实 CUDA 计算、数值与性能结果需要在 GK20A 上重新取得；CI 不声称验证 GPU。
 
@@ -93,3 +94,16 @@ LD_LIBRARY_PATH="$PWD/runtime/lib" ./mocha-large-buffer-probe
 ```
 
 应输出 `PAGE_SAMPLES=131072 ERRORS=0`。这是针对窗口冲突的回归，不代表每个字节都经过 GPU 全量校验。随后用 `./mocha-llm --backend cuda --check -i '你好' -n 8 -t 0` 覆盖真实 Transformer 路径。
+## v0.3.0 GGUF 引擎
+
+两款大模型复用 llama.cpp b4514，固定提交 `ec7f3ac9ab33e46b136eb5ab6a76c4d81f57c7f1`，不将其全部源码复制进仓库。
+
+```sh
+git clone https://github.com/ggml-org/llama.cpp.git build/llama.cpp
+git -C build/llama.cpp checkout ec7f3ac9ab33e46b136eb5ab6a76c4d81f57c7f1
+sh tools/build-gguf.sh build/llama.cpp build/gguf-armhf
+```
+
+使用现有现代 ARMhf 交叉编译器，指定 ARMv7、NEON VFPv4、hard-float 和 IEEE FP16 存储格式；静态链接 ggml／llama 组件，保留系统 glibc、libstdc++、libgomp 等依赖。禁用 CUDA、联网下载、服务器和测试构建。该 CPU 引擎与专用 Q8 CUDA 引擎独立。
+
+打包器默认版本为 `0.3.0`，需额外传入 `--gguf-engine build/gguf-armhf/mocha-gguf-engine`。其余参数与原有更新包一致。GGUF 权重不进入更新包；来源和校验值在 `models/large-models.json`，部署时按需下载。

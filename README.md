@@ -2,13 +2,13 @@
 
 [代码许可：MIT](LICENSE) · [部署教程](docs/deployment.md) · [实机性能](docs/performance.md) · [源码构建](docs/build.md)
 
-在小米平板 Mocha（Tegra K1、ARMv7）上运行本地语言模型，提供中文指令模型、英文微型故事模型，以及可检查的 CUDA／NEON CPU 推理路径。
+在小米平板 Mocha（Tegra K1、ARMv7）上运行本地语言模型，使用参数切换微型故事、Qwen 0.5B、Llama 1B 和 Qwen 1.5B。0.5B 提供 CUDA／CPU／协同路径，新增大模型使用 llama.cpp 的 ARMv7 NEON CPU 量化推理。
 
 这是针对 Mocha 开放驱动栈的实验工具。CUDA 路径执行真实 GPU 前向计算；速度取决于模型和开放 Runtime，不能据此认为 GPU 一定快于 CPU。
 
 ## 安装与运行
 
-预编译包见 [Releases](https://github.com/Pisces-Moze/mocha-moze-llm/releases)。包内包含两个模型、ARMhf 程序、私有开放 Runtime 和许可证，不需要在平板上安装编译器或 Python 推理框架。
+预编译包见 [Releases](https://github.com/Pisces-Moze/mocha-moze-llm/releases)。基础包包含两个小模型，更新包增加 ARMhf 程序、私有开放 Runtime 和许可证；1B／1.5B 权重按需从固定上游版本下载。不需要在平板上安装编译器或 Python 推理框架。
 
 ```sh
 # 在平板终端执行
@@ -21,11 +21,11 @@ tar -xzf mocha-llm-v0.1.0-armhf.tar.gz
 cd mocha-llm-v0.1.0
 python3 tools/verify-install.py .
 cd ..
-curl -fLO https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.2.1/mocha-llm-v0.2.1-armhf-update.tar.gz
-curl -fLo SHA256SUMS-v0.2.1 https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.2.1/SHA256SUMS
-sha256sum -c SHA256SUMS-v0.2.1
-tar -xzf mocha-llm-v0.2.1-armhf-update.tar.gz
-cd mocha-llm-v0.2.1
+curl -fLO https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.3.0/mocha-llm-v0.3.0-armhf-update.tar.gz
+curl -fLo SHA256SUMS-v0.3.0 https://github.com/Pisces-Moze/mocha-moze-llm/releases/download/v0.3.0/SHA256SUMS
+sha256sum -c SHA256SUMS-v0.3.0
+tar -xzf mocha-llm-v0.3.0-armhf-update.tar.gz
+cd mocha-llm-v0.3.0
 python3 tools/reuse-models.py --from ../mocha-llm-v0.1.0
 ./mocha-llm --model qwen -i '请用一句话介绍Linux。' -n 64
 ```
@@ -48,18 +48,39 @@ python3 tools/reuse-models.py --from ../mocha-llm-v0.1.0
 
 ## 升级到 v0.2.1
 
-新安装先按上面的命令取得 v0.1.0 的模型包，再安装 [v0.2.1 小型更新包](https://github.com/Pisces-Moze/mocha-moze-llm/releases/tag/v0.2.1)。模型权重不变，更新无需重复下载约 501 MiB 的 Qwen 文件。完整升级命令见 [部署教程](docs/deployment.md#升级到-v021)。
+历史版本 v0.2.1 也可从 v0.1.0 模型包升级：[小型更新包](https://github.com/Pisces-Moze/mocha-moze-llm/releases/tag/v0.2.1)。模型权重不变，更新无需重复下载约 501 MiB 的 Qwen 文件。旧版升级命令见 [部署教程](docs/deployment.md#升级到-v021)；当前安装入口使用上面的 v0.3.0。
 
 CPU＋GPU 协同模式可运行 `./mocha-llm --backend hybrid --threads 4 --gpu-head-percent 90 -i "你好" -n 32`。实测约 3.61 token/s，当前比纯 CUDA 慢，保留用于调整分工；不作为默认。
 
 v0.2.1 将 Qwen 总上下文从 256 扩到 1024 token，修复 `-n 256` 被提示词和模板挤占预算的问题。超限时会明确显示当前提示词下允许的最大 `-n`。`-n` 是新生成 token 的上限，遇到结束标记仍会提前停止。
 
-## 两个模型
+## v0.3.0：1B／1.5B 模型切换
+
+在现有安装旁边解压 [v0.3.0 更新包](https://github.com/Pisces-Moze/mocha-moze-llm/releases/tag/v0.3.0)，运行 `python3 tools/reuse-models.py --from ../mocha-llm-v0.2.1` 复用原权重；新安装也可从 v0.1.0 基础包复用。然后按需安装大模型：
+
+```sh
+python3 tools/fetch-models.py --model 1b
+python3 tools/fetch-models.py --model 1.5b
+./mocha-llm --list-models
+./mocha-llm --model 1b -i 'Explain Linux in one sentence.' -n 64
+./mocha-llm --model 1.5b -i '请用一句话介绍Linux。' -n 64
+./mocha-llm --model qwen --backend cuda -i '你好' -n 64
+```
+
+两份新增权重合计约 1.79 GiB。每份下载后都验证 SHA256，并要求目标分区保留至少 256 MiB。空间不足时用 `--directory /path/on/another/filesystem` 分开放置，工具自动建立模型链接；中国大陆可加 `--base-url https://hf-mirror.com`，哈希校验仍强制执行。
+
+大模型默认选择 CPU，显式指定 CUDA 会报出支持范围。当前开放 CUDA 引擎读取专用 Q8 格式，不能直接读取 GGUF。1B 更适合英文，中文优先使用 Qwen 1.5B。一次只加载被选中的模型；程序退出后释放其缓存。完整升级、空间规划与模型卸载见 [部署教程](docs/deployment.md#v030大模型)。
+
+2026-10-27 实机短回答验证：1B 约 1.18 token/s、峰值 RSS 842 MiB；1.5B 约 0.95 token/s、峰值 RSS 1127 MiB。两者均保持桌面运行、使用默认三线程；加载和首轮回答分别合计约 49／53 秒。结果是短时功能检查，详见 [记录与测量口径](docs/performance.md#v030大模型)。
+
+## 模型
 
 | 模型 | 用途 | 权重 | 本工具上下文 |
 | --- | --- | --- | --- |
 | Qwen2.5-0.5B-Instruct | 中文问答、简单指令 | 分组 Q8，约 501 MiB | 1024 token |
 | TinyStories 260K | 英文故事续写、CUDA 最小示例 | FP32，约 1 MiB | 512 token |
+| Llama 3.2 1B Instruct | 英文指令、较大模型对照 | GGUF Q4_K_M，约 770 MiB | 1024 token；NEON CPU |
+| Qwen2.5 1.5B Instruct | 中文问答、较大模型 | GGUF Q4_K_M，约 1066 MiB | 1024 token；NEON CPU |
 
 TinyStories 没有指令训练，把问题接成故事属于模型自身限制。Qwen 能跟随中文指令，但仍可能产生错误，不具备联网检索能力。
 
@@ -71,11 +92,12 @@ v0.2.1 的 CUDA 初始化与上述提示词预填充合计约 5.8 秒；等待�
 
 | 参数 | 默认值 | 含义 |
 | --- | --- | --- |
-| `--model` | `qwen` | `qwen` 或 `stories` |
-| `--backend` | `cuda` | `cuda`、`cpu` 或 `hybrid`；默认 CUDA，失败会报错，不静默换后端 |
+| `--model` | `qwen` | `qwen`、`stories`、`1b`（`llama1b`）、`1.5b`（`qwen1.5b`）；`qwen0.5b` 是旧 Qwen 的别名 |
+| `--list-models` | 关闭 | 列出模型、支持后端及安装状态 |
+| `--backend` | 按模型选择 | 小模型默认 `cuda`，1B／1.5B 默认 `cpu`；`hybrid` 仅用于 Qwen 0.5B，后端不匹配时明确报错 |
 | `--gpu-head-percent` | `90` | hybrid 的 GPU 词表行比例，可选 50／75／90／100；CPU 并行处理其余词表行 |
 | `-i` | 简短示例 | 提示词，中文模型自动套用对应 ChatML 模板 |
-| `-n` | `96` | Qwen：最多新生成 token；Stories：包含提示词的总推理步数 |
+| `-n` | `96` | 指令模型：最多新生成 token；Stories：包含提示词的总推理步数 |
 | `-t` | `0.7` | 温度；`0` 为确定性贪心选择 |
 | `--repeat-penalty` | `1.12` | 中文模型最近 64 token 的重复惩罚 |
 | `--top-k` / `--top-p` | `40` / `0.9` | 中文模型采样范围；温度为 0 时不使用 |
@@ -93,7 +115,7 @@ v0.2.1 的 CUDA 初始化与上述提示词预填充合计约 5.8 秒；等待�
 
 实测数据、测量口径和 GPU 限制见 [性能记录](docs/performance.md)。部署、故障处理和卸载见 [部署教程](docs/deployment.md)。重建方法见 [构建说明](docs/build.md)。
 
-Qwen 使用 24 层、分组 Q8 权重、GQA、RoPE、QKV bias 和 ChatML；CPU 矩阵乘使用 NEON，CUDA 在 GK20A 上执行完整 Transformer 前向。预填充跳过不用于采样的词表投影。发行版开放 Runtime 修正了旧 Gdev 的 generic shared/local 地址窗口与大权重冲突，真实 Qwen CPU／CUDA 对照已覆盖 6,229,376 个 logits。
+0.5B 的专用引擎使用 24 层、分组 Q8 权重、GQA、RoPE、QKV bias 和 ChatML；CPU 矩阵乘使用 NEON，CUDA 在 GK20A 上执行完整 Transformer 前向。预填充跳过不用于采样的词表投影。发行版开放 Runtime 修正了旧 Gdev 的 generic shared/local 地址窗口与大权重冲突，真实 Qwen CPU／CUDA 对照已覆盖 6,229,376 个 logits。
 
 ## 源码与验证
 
@@ -114,5 +136,8 @@ python3 -m unittest discover -s tests -v
 - [Qwen2.5-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct)：Apache-2.0，固定版本与哈希见 [模型清单](models/qwen-inputs.json)。
 - [karpathy/tinyllamas](https://huggingface.co/karpathy/tinyllamas) 和 [llama2.c](https://github.com/karpathy/llama2.c)：MIT，固定输入见 [故事模型清单](models/stories-inputs.json)。
 - [Gdev](https://github.com/shinpei0208/gdev)：MIT，开放 Runtime 的 Mocha 修改和上游固定输入位于 [runtime-source](runtime-source)。
+- [llama.cpp](https://github.com/ggml-org/llama.cpp/tree/ec7f3ac9ab33e46b136eb5ab6a76c4d81f57c7f1)：MIT，固定 b4514，用于 ARMv7 CPU GGUF 引擎。
+- [Qwen2.5-1.5B-Instruct-GGUF](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF)：Apache-2.0。
+- [Llama 3.2 1B Instruct GGUF](https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF)：Meta Llama 3.2 Community License 与 Acceptable Use Policy，**不是 MIT**。Built with Llama。来源、固定版本、量化和哈希见 [大模型清单](models/large-models.json)。
 
 不分发 NVIDIA CUDA Toolkit、NVCC、专有 libcudart 或供应商头文件。此工具不能代表完整 NVIDIA CUDA 运行时、PyTorch CUDA 或 cuBLAS 已经可用。

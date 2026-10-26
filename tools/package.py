@@ -19,11 +19,12 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--qwen-engine', required=True, type=Path)
     p.add_argument('--stories-engine', required=True, type=Path)
+    p.add_argument('--gguf-engine', type=Path, help='ARMhf llama.cpp executable; required for 0.3.0')
     p.add_argument('--qwen-weights', required=True, type=Path)
     p.add_argument('--stories-inputs', required=True, type=Path)
     p.add_argument('--runtime-prefix', required=True, type=Path)
     p.add_argument('--output', required=True, type=Path, help='new build directory')
-    p.add_argument('--version', default='0.2.1', choices=['0.1.0','0.2.0','0.2.1'])
+    p.add_argument('--version', default='0.3.0', choices=['0.1.0','0.2.0','0.2.1','0.3.0'])
     p.add_argument('--reuse-models', action='store_true', help='update archive; reuse verified weights from v0.1.0')
     a = p.parse_args()
     repo = Path(__file__).resolve().parents[1]
@@ -39,7 +40,10 @@ def main():
             raw=source.read_bytes()
             source.write_bytes(raw.replace(b'\r\n',b'\n'))
     (root / 'bin').mkdir()
-    for source, name in [(a.qwen_engine, 'mocha-qwen-engine'), (a.stories_engine, 'mocha-stories-engine')]:
+    engines=[(a.qwen_engine, 'mocha-qwen-engine'), (a.stories_engine, 'mocha-stories-engine')]
+    if a.version=='0.3.0' and not a.gguf_engine:p.error('--gguf-engine is required for 0.3.0')
+    if a.gguf_engine:engines.append((a.gguf_engine,'mocha-gguf-engine'))
+    for source, name in engines:
         raw = source.read_bytes()
         if raw[:5] != b'\x7fELF\x01' or int.from_bytes(raw[18:20], 'little') != 40:
             raise ValueError('Not an ELF32 ARM executable: ' + str(source))
@@ -93,7 +97,7 @@ def main():
 def normalize(info):
     info.uid = info.gid = 0
     info.uname = info.gname = 'root'
-    info.mode = 0o755 if info.isdir() or info.name.endswith(('mocha-llm', 'mocha-qwen-engine', 'mocha-stories-engine')) else 0o644
+    info.mode = 0o755 if info.isdir() or info.name.endswith(('mocha-llm', 'mocha-qwen-engine', 'mocha-stories-engine', 'mocha-gguf-engine')) else 0o644
     return info
 
 if __name__ == '__main__':

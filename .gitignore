@@ -3,5 +3,7 @@ dist/
 __pycache__/
 *.bin
 *.safetensors
+*.gguf
+*.partial
 *.tar.gz
 *.o

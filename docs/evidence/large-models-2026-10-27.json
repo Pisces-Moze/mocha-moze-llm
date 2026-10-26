@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-27",
+  "kernel": "6.12.111-moze.1-native-vde2",
+  "models": {
+    "llama1b": {
+      "model": "llama1b",
+      "backend": "ARMv7 NEON CPU",
+      "returncode": 0,
+      "prompt": "Explain Linux in one short sentence.",
+      "output": "Linux is an open-source operating system that allows users to customize and modify its code, providing a flexible and powerful platform for computing and software development. [end of text]\n\n\n",
+      "wall_seconds": 48.86,
+      "max_rss_kib": 862504,
+      "performance_lines": [
+        "llama_perf_context_print:        load time =   15970.02 ms",
+        "llama_perf_context_print: prompt eval time =    6912.01 ms /    19 tokens (  363.79 ms per token,     2.75 tokens per second)",
+        "llama_perf_context_print:        eval time =   24543.38 ms /    29 runs   (  846.32 ms per token,     1.18 tokens per second)"
+      ]
+    },
+    "qwen1.5b": {
+      "model": "qwen1.5b",
+      "backend": "ARMv7 NEON CPU",
+      "returncode": 0,
+      "prompt": "请用一句话介绍Linux。",
+      "output": "Linux是一种自由软件，由Linus Torvalds开发和维护。 [end of text]\n\n\n",
+      "wall_seconds": 52.53,
+      "max_rss_kib": 1153624,
+      "performance_lines": [
+        "llama_perf_context_print:        load time =   28810.76 ms",
+        "llama_perf_context_print: prompt eval time =    6688.15 ms /    14 tokens (  477.73 ms per token,     2.09 tokens per second)",
+        "llama_perf_context_print:        eval time =   15713.02 ms /    15 runs   ( 1047.53 ms per token,     0.95 tokens per second)"
+      ]
+    }
+  },
+  "model_transfer_sha256_verified": true,
+  "engine_sha256": "c2b255fb42edf948ce8f352503f43cec6faf0ab75e94a69994c69ccc83b15366"
+}
