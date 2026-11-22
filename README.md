@@ -6,6 +6,10 @@
 
 这是针对 Mocha 开放驱动栈的实验工具。CUDA 路径执行真实 GPU 前向计算；速度取决于模型和开放 Runtime，不能据此认为 GPU 一定快于 CPU。
 
+## 与 Mocha Debian r8 配合使用
+
+先通过 [r8 整合包](https://github.com/Pisces-Moze/mocha-moze-flasher/releases/tag/source-candidate-20261121-r8)安装系统，再在平板端安装本工具。r8 镜像不附带模型权重。当前 [v0.4.0 发行页](https://github.com/Pisces-Moze/mocha-moze-llm/releases/tag/v0.4.0)是独立版本，升级与后端选择见 [版本说明](docs/versions.md)。
+
 ## 安装与运行
 
 **当前版本：v0.4.0**。所有功能已汇总到这一版，旧版本不需要逐个安装。
@@ -40,7 +44,7 @@ python3 install-mocha-llm.py --directory ~/Applications/mocha-llm
 ./mocha-llm --model stories --backend cuda -i 'Once upon a time' -n 96 -t 0
 ```
 
-## 升级到 v0.2.1
+## 历史版本 v0.2.1
 
 历史版本 v0.2.1 也可从 v0.1.0 模型包升级：[小型更新包](https://github.com/Pisces-Moze/mocha-moze-llm/releases/tag/v0.2.1)。模型权重不变，更新无需重复下载约 501 MiB 的 Qwen 文件。旧版升级命令见 [部署教程](docs/deployment.md#升级到-v021)；当前安装入口使用上面的 v0.4.0。
 
